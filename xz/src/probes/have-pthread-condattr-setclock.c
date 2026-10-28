@@ -1,0 +1,1 @@
+../../../liblzma/src/probes/have-pthread-condattr-setclock.c

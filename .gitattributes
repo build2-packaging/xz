@@ -25,3 +25,4 @@ xz/src/common symlink=dir
 xz/src/lib symlink=dir
 xz/src/scripts symlink=dir
 xz/src/xz symlink=dir
+xz/build/autoconf symlink=dir

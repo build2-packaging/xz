@@ -1,0 +1,85 @@
+# Configuration probes.
+#
+# Upstream discovers what the compiler and the C library provide by
+# compiling test programs (see CMakeLists.txt and cmake/tuklib_*.cmake). We
+# do the same, translating each upstream check into a probe that is compiled
+# during load together with a control variant (see the "How do I implement
+# autoconf-style configuration probing?" build2 HOWTO for background). The
+# results are made available as have_* variables in this scope and are
+# substituted into config.h by the parent buildfile.
+#
+# The probe rules are in build/probe.build which, together with the probes
+# shared with the library, comes from the liblzma package.
+#
+
+source $src_root/build/probe.build
+
+# Headers.
+#
+# The header name is derived from the target name (for example, byteswap.h
+# for have-byteswap-h) and so we specify the ones in subdirectories
+# explicitly.
+#
+buildfile{have-sys-endian-h}:    header_name = sys/endian.h
+buildfile{have-sys-byteorder-h}: header_name = sys/byteorder.h
+
+probes =
+
+for h: byteswap sys-endian sys-byteorder
+{
+  buildfile{have-$h-h}:
+  probes += buildfile{have-$h-h}
+}
+
+# C probes.
+#
+# Upstream performs some checks only if another one fails or succeeds (for
+# example, it only checks for futimes() if futimens() is not available). The
+# probes are compiled unconditionally instead and the parent buildfile
+# combines the results (see probes/buildfile in liblzma for the reason).
+#
+for p: clock-gettime              \
+       clock-monotonic            \
+       pthread-condattr-setclock  \
+       builtin-bswapxx            \
+       bswap-16                   \
+       bswap-32                   \
+       bswap-64                   \
+       builtin-assume-aligned     \
+       program-invocation-name    \
+       mbrtowc                    \
+       wcwidth                    \
+       vasprintf                  \
+       getopt-long                \
+       optreset                   \
+       getrlimit                  \
+       posix-fadvise              \
+       stat-st-atim-tv-nsec       \
+       stat-st-atimespec-tv-nsec  \
+       stat-st-atimensec          \
+       futimens                   \
+       futimes                    \
+       futimesat                  \
+       utimes                     \
+       _futime                    \
+       utime                      \
+       cap-rights-limit           \
+       pledge                     \
+       linux-landlock
+{
+  buildfile{have-$p}: c{have-$p}
+  probes += buildfile{have-$p}
+}
+
+./: $probes # Make sure gets cleaned.
+
+# We only need the results to generate config.h and so we limit probing to
+# the perform meta-operation (for example, to avoid surprising compilations
+# during configure). Elsewhere the results stay undefined since config.h is
+# not generated.
+#
+if ($build.meta_operation == 'perform')
+{
+  update $probes
+  source $path($probes)
+}

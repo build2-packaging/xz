@@ -1,0 +1,83 @@
+// The command line tools configuration header. Upstream produces it with
+// Autotools or passes the equivalent macros on the command line with CMake.
+// We generate it with the autoconf module: the results of the probes in
+// probes/ are substituted by the buildfile while the rest are
+// expectation-based checks (see build/autoconf/checks/ for the
+// project-specific ones).
+//
+
+// Package information that the tools print in --help and --version.
+//
+#define PACKAGE_NAME "XZ Utils"
+#define PACKAGE_BUGREPORT "xz@tukaani.org"
+#define PACKAGE_URL "https://tukaani.org/xz/"
+
+// Upstream requires C99 and so these are always available (its CMake build
+// defines them unconditionally as well).
+//
+#define HAVE_STDBOOL_H 1
+#define HAVE__BOOL 1
+#define HAVE_STDINT_H 1
+#define HAVE_INTTYPES_H 1
+
+// Byte order and unaligned access (tuklib_integer.h).
+//
+#undef WORDS_BIGENDIAN
+#undef TUKLIB_FAST_UNALIGNED_ACCESS
+
+#undef HAVE___BUILTIN_BSWAPXX
+#undef HAVE_BYTESWAP_H
+#undef HAVE_BSWAP_16
+#undef HAVE_BSWAP_32
+#undef HAVE_BSWAP_64
+#undef HAVE_SYS_ENDIAN_H
+#undef HAVE_SYS_BYTEORDER_H
+#undef HAVE___BUILTIN_ASSUME_ALIGNED
+
+// Time and threading (mythread.h).
+//
+#undef HAVE_CLOCK_GETTIME
+#undef HAVE_CLOCK_MONOTONIC
+#undef HAVE_PTHREAD_CONDATTR_SETCLOCK
+
+// Program name (tuklib_progname.c) and multibyte strings (tuklib_mbstr*.c).
+//
+#undef HAVE_PROGRAM_INVOCATION_NAME
+
+#undef HAVE_MBRTOWC
+#undef HAVE_WCWIDTH
+#undef HAVE_VASPRINTF
+
+// Command line parsing. Note that optreset is only checked for if the
+// system's getopt_long() is used.
+//
+#undef HAVE_OPTRESET
+
+// Resource limits and file I/O (xz).
+//
+#undef HAVE_GETRLIMIT
+#undef HAVE_POSIX_FADVISE
+
+// Getting the file times (xz). Only the first available member in upstream's
+// order of preference is defined.
+//
+#undef HAVE_STRUCT_STAT_ST_ATIM_TV_NSEC
+#undef HAVE_STRUCT_STAT_ST_ATIMESPEC_TV_NSEC
+#undef HAVE_STRUCT_STAT_ST_ATIMENSEC
+
+// Setting the file times (xz). As above, only the first available function
+// is defined.
+//
+#undef HAVE_FUTIMENS
+#undef HAVE_FUTIMES
+#undef HAVE_FUTIMESAT
+#undef HAVE_UTIMES
+#undef HAVE__FUTIME
+#undef HAVE_UTIME
+
+// Sandboxing (xz, xzdec, and lzmadec). As above, only the first available
+// method is defined.
+//
+#undef HAVE_CAP_RIGHTS_LIMIT
+#undef HAVE_PLEDGE
+#undef HAVE_LINUX_LANDLOCK

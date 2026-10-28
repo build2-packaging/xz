@@ -1,0 +1,1 @@
+../../../liblzma/src/probes/have-bswap-16.c
