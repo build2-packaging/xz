@@ -27,3 +27,6 @@ xz/src/scripts symlink=dir
 xz/src/xz symlink=dir
 xz/build/autoconf symlink=dir
 xz/tests/xz/files symlink=dir
+xzdec/src/common symlink=dir
+xzdec/src/lib symlink=dir
+xzdec/src/xzdec symlink=dir
