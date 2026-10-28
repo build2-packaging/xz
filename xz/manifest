@@ -1,6 +1,6 @@
 : 1
 name: xz
-version: 5.8.4-a.0.z
+version: 5.8.4
 language: c
 project: xz
 summary: XZ and LZMA data compression command line utility
