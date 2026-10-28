@@ -8,7 +8,12 @@ supported as well.
 This file contains setup instructions and other details that are more
 appropriate for development rather than consumption. If you want to use
 `xz` in your `build2`-based project, then instead see the accompanying
-[`PACKAGE-README.md`](liblzma/PACKAGE-README.md) file.
+`PACKAGE-README.md` files:
+
+* [`liblzma/PACKAGE-README.md`](liblzma/PACKAGE-README.md)
+* [`xz/PACKAGE-README.md`](xz/PACKAGE-README.md)
+* [`xzdec/PACKAGE-README.md`](xzdec/PACKAGE-README.md)
+* [`lzmainfo/PACKAGE-README.md`](lzmainfo/PACKAGE-README.md)
 
 The development setup for `xz` uses the standard `bdep`-based workflow.
 For example:
