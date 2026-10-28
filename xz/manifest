@@ -4,7 +4,7 @@ version: 5.8.4-a.0.z
 language: c
 project: xz
 summary: XZ and LZMA data compression command line utility
-license: 0BSD AND GPL-2.0-or-later AND LGPL-2.1-or-later ; Scripts, getopt.
+license: 0BSD AND GPL-2.0-or-later AND LGPL-2.1-or-later ; Scripts GPLv2+, getopt_long() replacement LGPLv2.1+.
 topics: data compression, LZMA, LZMA2, XZ
 description-file: README
 package-description-file: PACKAGE-README.md
