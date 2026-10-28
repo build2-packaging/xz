@@ -3,4 +3,7 @@ $out_root/
   include src/
 }
 
-export $out_root/src/$import.target
+# Note that the executables are built in the xz/ subdirectory (see
+# src/buildfile for details).
+#
+export $out_root/src/xz/$import.target
