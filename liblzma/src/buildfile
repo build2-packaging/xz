@@ -1,43 +1,274 @@
-intf_libs = # Interface dependencies.
-impl_libs = # Implementation dependencies.
-#import xxxx_libs += libhello%lib{hello}
+# Upstream builds liblzma from src/liblzma/ plus a few tuklib modules from
+# src/common/ (which it shares with the command line tools). We symlink both
+# directories and follow upstream's CMakeLists.txt, which is the reference
+# for everything below.
+#
+./: lib{lzma} probes/
 
-lib{lzma}: {h c}{**} $impl_libs $intf_libs
+# Features.
+#
+# We build upstream's default feature set, which is also what the major
+# distributions ship: every filter encoder and decoder, every match finder
+# and integrity check, as well as the lzip decoder and MicroLZMA support.
+# These lists are conveyed in the library metadata (see below) so that the
+# tests and the command line tools are built with the matching macros.
+#
+filters = lzma1 lzma2 delta x86 arm armthumb arm64 powerpc ia64 sparc riscv
+
+encoders      = $filters
+decoders      = $filters
+match_finders = hc3 hc4 bt2 bt3 bt4
+checks        = crc32 crc64 sha256
+
+lzip_decoder      = true
+microlzma_encoder = true
+microlzma_decoder = true
+
+# Threading method.
+#
+# Similar to upstream, we prefer the native threads on Windows, using the
+# Windows XP-compatible variant for 32-bit targets (upstream measured no
+# difference in performance), and POSIX threads everywhere else.
+#
+if ($c.target.class == 'windows')
+  threads = ($regex.match($c.target.cpu, 'i[3-6]86|arm.*') ? win95 : vista)
+else
+  threads = posix
+
+# The 32-bit x86 assembly CRC implementations are used by upstream with
+# GCC-class compilers on the following platforms.
+#
+x86_asm = ($c.class == 'gcc'                              && \
+           $regex.match($c.target.cpu, 'i[3-6]86')        && \
+           ($c.target.class == 'linux'     ||                \
+            $c.target.class == 'bsd'       ||                \
+            $c.target.system == 'mingw32'  ||                \
+            $c.target.system == 'gnu'))
+
+# ELF symbol versioning variant of the shared library (see liblzma_*.map).
+# Upstream uses the Linux variant (with extra compatibility symbols) on
+# GNU/Linux, except on MicroBlaze where GCC lacks the __symver__ attribute,
+# and the generic variant on FreeBSD and GNU/Hurd.
+#
+symver = [null]
+
+if ($c.target.class == 'linux' && $c.stdlib == 'glibc')
+  symver = ($regex.match($c.target.cpu, 'microblaze.*') ? generic : linux)
+elif ($regex.match($c.target.system, 'freebsd.*') || \
+      $c.target.system == 'gnu')
+  symver = generic
+
+# Enable the system extensions (as upstream's tuklib_use_system_extensions()
+# does) before probing since some checks depend on them.
+#
+if ($c.class != 'msvc')
+  c.poptions += -D_GNU_SOURCE              \
+                -D_NETBSD_SOURCE           \
+                -D_OPENBSD_SOURCE          \
+                -D__EXTENSIONS__           \
+                -D_POSIX_PTHREAD_SEMANTICS \
+                -D_DARWIN_C_SOURCE         \
+                -D_TANDEM_SOURCE           \
+                -D_ALL_SOURCE
+
+include probes/
+
+# Sources.
+#
+# Exclude the alternative size-optimized CRC implementations as well as the
+# programs that generate the lookup tables.
+#
+lib{lzma}: liblzma/{h c}{** -check/crc32_small -check/crc64_small \
+                            -**_tablegen -check/crc_clmul_consts_gen}
+
+lib{lzma}: liblzma/check/S{crc32_x86 crc64_x86}: include = $x86_asm
+
+lib{lzma}: common/h{mythread        \
+                    sysdefs         \
+                    tuklib_common   \
+                    tuklib_config   \
+                    tuklib_integer  \
+                    tuklib_cpucores \
+                    tuklib_physmem}
+
+lib{lzma}: common/c{tuklib_cpucores tuklib_physmem}
+
+libs{lzma}: liblzma/file{liblzma_linux.map}:   \
+  include = ($symver == 'linux' ? adhoc : false)
+
+libs{lzma}: liblzma/file{liblzma_generic.map}: \
+  include = ($symver == 'generic' ? adhoc : false)
+
+lib{lzma}: h{config}
+
+# Configuration header.
+#
+using autoconf
+
+h{config}: in{config}
+{
+  HAVE___BUILTIN_BSWAPXX       = $(probes/ have_builtin_bswapxx)
+  HAVE_BYTESWAP_H              = $(probes/ have_byteswap_h)
+  HAVE_BSWAP_16                = $(probes/ have_bswap_16)
+  HAVE_BSWAP_32                = $(probes/ have_bswap_32)
+  HAVE_BSWAP_64                = $(probes/ have_bswap_64)
+  HAVE_SYS_ENDIAN_H            = $(probes/ have_sys_endian_h)
+  HAVE_SYS_BYTEORDER_H         = $(probes/ have_sys_byteorder_h)
+  HAVE___BUILTIN_ASSUME_ALIGNED = $(probes/ have_builtin_assume_aligned)
+
+  HAVE_CLOCK_GETTIME             = $(probes/ have_clock_gettime)
+  HAVE_CLOCK_MONOTONIC           = $(probes/ have_clock_monotonic)
+  HAVE_PTHREAD_CONDATTR_SETCLOCK = $(probes/ have_pthread_condattr_setclock)
+
+  HAVE_SYS_PARAM_H = $(probes/ have_sys_param_h)
+
+  TUKLIB_CPUCORES_SCHED_GETAFFINITY = $(probes/ have_cpucores_sched_getaffinity)
+  TUKLIB_CPUCORES_CPUSET            = $(probes/ have_cpucores_cpuset)
+  TUKLIB_CPUCORES_SYSCTL            = $(probes/ have_cpucores_sysctl)
+  TUKLIB_CPUCORES_SYSCONF           = $(probes/ have_cpucores_sysconf)
+  TUKLIB_CPUCORES_PSTAT_GETDYNAMIC  = $(probes/ have_cpucores_pstat_getdynamic)
+
+  TUKLIB_PHYSMEM_AIX             = $(probes/ have_physmem_aix)
+  TUKLIB_PHYSMEM_SYSCONF         = $(probes/ have_physmem_sysconf)
+  TUKLIB_PHYSMEM_SYSCTL          = $(probes/ have_physmem_sysctl)
+  TUKLIB_PHYSMEM_PSTAT_GETSTATIC = $(probes/ have_physmem_pstat_getstatic)
+
+  HAVE_FUNC_ATTRIBUTE_CONSTRUCTOR = $(probes/ have_func_attribute_constructor)
+
+  HAVE_CPUID_H           = $(probes/ have_cpuid_h)
+  HAVE_IMMINTRIN_H       = $(probes/ have_immintrin_h)
+  HAVE__MM_MOVEMASK_EPI8 = $(probes/ have_mm_movemask_epi8)
+  HAVE_USABLE_CLMUL      = $(probes/ have_usable_clmul)
+
+  HAVE_ARM64_CRC32  = $(probes/ have_arm64_crc32)
+  HAVE_GETAUXVAL    = $(probes/ have_getauxval)
+  HAVE_HWCAP_CRC32  = $(probes/ have_hwcap_crc32)
+  HAVE_ELF_AUX_INFO = $(probes/ have_elf_aux_info)
+  HAVE_SYSCTLBYNAME = $(probes/ have_sysctlbyname)
+
+  HAVE_LOONGARCH_CRC32 = $(probes/ have_loongarch_crc32)
+}
 
 # Build options.
+#
+# Upstream compiles every source file with each liblzma subdirectory in the
+# header search paths.
 #
 out_pfx = [dir_path] $out_root/src/
 src_pfx = [dir_path] $src_root/src/
 
-c.poptions =+ "-I$out_pfx" "-I$src_pfx"
+inc = "-I$out_pfx"
 
-#obja{*}: c.poptions += -DLIBLZMA_STATIC_BUILD
-#objs{*}: c.poptions += -DLIBLZMA_SHARED_BUILD
+for d: api common check lz rangecoder lzma delta simple
+  inc += "-I$src_pfx/liblzma/$d"
+
+inc += "-I$src_pfx/common"
+
+c.poptions =+ $inc
+
+# Put the tuklib functions into the lzma_ namespace.
+#
+c.poptions += -DHAVE_CONFIG_H -DTUKLIB_SYMBOL_PREFIX=lzma_
+
+c.poptions += -DHAVE_ENCODERS -DHAVE_DECODERS
+
+for e: $encoders
+  c.poptions += "-DHAVE_ENCODER_$string.ucase($e)"
+
+for d: $decoders
+  c.poptions += "-DHAVE_DECODER_$string.ucase($d)"
+
+for m: $match_finders
+  c.poptions += "-DHAVE_MF_$string.ucase($m)"
+
+for k: $checks
+  c.poptions += "-DHAVE_CHECK_$string.ucase($k)"
+
+if $lzip_decoder
+  c.poptions += -DHAVE_LZIP_DECODER
+
+c.poptions += "-DMYTHREAD_$string.ucase($threads)"
+
+if $x86_asm
+  c.poptions += -DHAVE_CRC_X86_ASM
+
+if ($threads == 'posix')
+  c.libs += -pthread
+
+# Symbol exporting.
+#
+# On Windows the API functions are marked with __declspec(dllexport) when
+# building the DLL. Elsewhere the shared library is built with hidden
+# visibility and the API functions are marked with the default visibility
+# if the compiler supports it.
+#
+visibility = ($c.target.class != 'windows' && $c.class == 'gcc')
+
+obja{*}: c.poptions += -DHAVE_VISIBILITY=0
+objs{*}: c.poptions += -DHAVE_VISIBILITY=($visibility ? 1 : 0)
+
+if ($c.target.class == 'windows')
+  objs{*}: c.poptions += -DDLL_EXPORT
+
+if $visibility
+  objs{*}: c.coptions += -fvisibility=hidden
+
+# Symbol versioning (see above). Note that the Linux variant also requires
+# the macro since the compatibility symbols are defined in the source code.
+#
+if ($symver == 'linux')
+  objs{*}: c.poptions += -DHAVE_SYMBOL_VERSIONS_LINUX=1
+
+if ($symver != [null])
+  libs{lzma}: c.loptions += "-Wl,--version-script=$src_base/liblzma/liblzma_$(symver).map"
 
 # Export options.
 #
+# Note that the shared library is the default from the consumer's point of
+# view (lzma.h uses __declspec(dllimport) with MSVC unless LZMA_API_STATIC
+# is defined).
+#
 lib{lzma}:
 {
-  c.export.poptions = "-I$out_pfx" "-I$src_pfx"
-  c.export.libs = $intf_libs
+  c.export.poptions = "-I$src_pfx/liblzma/api"
+
+  export.metadata = 1 liblzma
+
+  liblzma.encoders          = [strings] $encoders
+  liblzma.decoders          = [strings] $decoders
+  liblzma.checks            = [strings] $checks
+  liblzma.lzip_decoder      = [bool] $lzip_decoder
+  liblzma.microlzma_encoder = [bool] $microlzma_encoder
+  liblzma.microlzma_decoder = [bool] $microlzma_decoder
+  liblzma.threads           = [string] $threads
 }
 
-#liba{lzma}: c.export.poptions += -DLIBLZMA_STATIC
-#libs{lzma}: c.export.poptions += -DLIBLZMA_SHARED
+liba{lzma}: c.export.poptions += -DLZMA_API_STATIC
 
-# For pre-releases use the complete version to make sure they cannot
-# be used in place of another pre-release or the final version. See
-# the version module for details on the version.* variable values.
+# Upstream keeps the ABI backwards-compatible across the stable releases of
+# the same major version and so we only embed the major version component
+# into the shared library name. On Linux we use upstream's soname
+# (liblzma.so.5).
+#
+# For pre-releases use the complete version to make sure they cannot be used
+# in place of another pre-release or the final version. See the version
+# module for details on the version.* variable values.
 #
 if $version.pre_release
-  lib{lzma}: bin.lib.version = "-$version.project_id"
+  lib{lzma}: bin.lib.version = @"-$version.project_id"
 else
-  lib{lzma}: bin.lib.version = "-$version.major.$version.minor"
+  lib{lzma}: bin.lib.version = @"-$version.major" linux@"$version.major"
 
-# Install recreating subdirectories.
+# Only install the public headers (lzma.h and lzma/*.h) into, say,
+# /usr/include/, as upstream does.
 #
-h{*}:
+h{*}: install = false
+
+liblzma/api/
 {
-  install         = include/
-  install.subdirs = true
+  h{*}:
+  {
+    install         = include/
+    install.subdirs = true
+  }
 }
