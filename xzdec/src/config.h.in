@@ -1,0 +1,32 @@
+// The xzdec and lzmadec configuration header. Upstream produces it with
+// Autotools or passes the equivalent macros on the command line with CMake.
+// We generate it with the autoconf module, substituting the results of the
+// probes in probes/.
+//
+
+// Package information that the tools print in --help and --version.
+//
+#define PACKAGE_NAME "XZ Utils"
+#define PACKAGE_BUGREPORT "xz@tukaani.org"
+#define PACKAGE_URL "https://tukaani.org/xz/"
+
+// Upstream requires C99 and so these are always available (its CMake build
+// defines them unconditionally as well).
+//
+#define HAVE_STDBOOL_H 1
+#define HAVE__BOOL 1
+#define HAVE_STDINT_H 1
+#define HAVE_INTTYPES_H 1
+
+// Program name (tuklib_progname.c) and multibyte strings
+// (tuklib_mbstr_nonprint.c).
+//
+#undef HAVE_PROGRAM_INVOCATION_NAME
+#undef HAVE_MBRTOWC
+
+// Sandboxing. Only the first available method in upstream's order of
+// preference is defined.
+//
+#undef HAVE_CAP_RIGHTS_LIMIT
+#undef HAVE_PLEDGE
+#undef HAVE_LINUX_LANDLOCK

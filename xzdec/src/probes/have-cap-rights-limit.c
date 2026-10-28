@@ -1,0 +1,1 @@
+../../../xz/src/probes/have-cap-rights-limit.c

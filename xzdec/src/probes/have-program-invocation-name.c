@@ -1,0 +1,1 @@
+../../../xz/src/probes/have-program-invocation-name.c
