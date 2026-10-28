@@ -1,0 +1,1 @@
+../../../xz/src/probes/have-vasprintf.c

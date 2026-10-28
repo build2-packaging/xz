@@ -1,0 +1,27 @@
+// The lzmainfo configuration header. Upstream produces it with Autotools or
+// passes the equivalent macros on the command line with CMake. We generate
+// it with the autoconf module, substituting the results of the probes in
+// probes/.
+//
+
+// Package information that the tool prints in --help and --version.
+//
+#define PACKAGE_NAME "XZ Utils"
+#define PACKAGE_BUGREPORT "xz@tukaani.org"
+#define PACKAGE_URL "https://tukaani.org/xz/"
+
+// Upstream requires C99 and so these are always available (its CMake build
+// defines them unconditionally as well).
+//
+#define HAVE_STDBOOL_H 1
+#define HAVE__BOOL 1
+#define HAVE_STDINT_H 1
+#define HAVE_INTTYPES_H 1
+
+// Program name (tuklib_progname.c) and multibyte strings (tuklib_mbstr*.c).
+//
+#undef HAVE_PROGRAM_INVOCATION_NAME
+
+#undef HAVE_MBRTOWC
+#undef HAVE_WCWIDTH
+#undef HAVE_VASPRINTF

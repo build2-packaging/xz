@@ -1,0 +1,40 @@
+# Configuration probes.
+#
+# Upstream discovers what the compiler and the C library provide by
+# compiling test programs (see CMakeLists.txt and cmake/tuklib_*.cmake). We
+# do the same, translating each upstream check into a probe that is compiled
+# during load together with a control variant (see the "How do I implement
+# autoconf-style configuration probing?" build2 HOWTO for background). The
+# results are made available as have_* variables in this scope and are
+# substituted into config.h by the parent buildfile.
+#
+# The probe rules are in build/probe.build, which comes from the liblzma
+# package, and the probes themselves are shared with the xz package.
+#
+
+source $src_root/build/probe.build
+
+probes =
+
+for p: program-invocation-name \
+       mbrtowc                 \
+       wcwidth                 \
+       vasprintf               \
+       getopt-long
+{
+  buildfile{have-$p}: c{have-$p}
+  probes += buildfile{have-$p}
+}
+
+./: $probes # Make sure gets cleaned.
+
+# We only need the results to generate config.h and so we limit probing to
+# the perform meta-operation (for example, to avoid surprising compilations
+# during configure). Elsewhere the results stay undefined since config.h is
+# not generated.
+#
+if ($build.meta_operation == 'perform')
+{
+  update $probes
+  source $path($probes)
+}
