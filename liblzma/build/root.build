@@ -8,10 +8,10 @@ using c
 #
 using c.as-cpp
 
-# Windows resource file rule (see w32res.build for details).
+# Windows resource file rule (see w32res.build for details). Note that we
+# source it unconditionally for it to be distributed.
 #
-if ($c.target.class == 'windows')
-  source $src_root/build/w32res.build
+source $src_root/build/w32res.build
 
 h{*}: extension = h
 c{*}: extension = c

@@ -13,7 +13,9 @@
 #
 # Note that the output is passed to the linker as an option (the cc link
 # rule doesn't recognize it as an input) and so we also make its extension
-# available as the w32res_extension variable.
+# available as the w32res_extension variable. Note also that the bin.rc
+# module is only loaded when targeting Windows, which is the only case where
+# this rule is used.
 #
 define w32res: file
 
