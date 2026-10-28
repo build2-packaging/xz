@@ -1,0 +1,57 @@
+# The test scripts expect the executables in the directory passed as their
+# argument and so we set one up with symlinks to the executables being
+# tested.
+#
++mkdir bin
++ln -s $0 bin/
++ln -s $path($xzdiff) bin/
++ln -s $path($xzgrep) bin/
+
+bin = $~/bin
+
+: decompress-files
+:
+: Test decompression of the good, bad, and unsupported test files.
+:
+env "srcdir=$src_base" -- sh $src_base/test_files.sh $bin >-
+
+: suffix-handling
+:
+: Test the suffix handling (--suffix, --format=raw, etc).
+:
+sh $src_base/test_suffix.sh $bin >-
+
+: scripts-diff-grep
+:
+: Test xzdiff and xzgrep.
+:
+env "srcdir=$src_base" -- sh $src_base/test_scripts.sh $bin >- \
+  &xzgrep_test_1.xz &xzgrep_test_2.xz &xzgrep_test_output
+
+: compress-generated
+:
+: Test compression and decompression of generated files with various
+: options and filters. Note that the script runs create_compress_files from
+: its working directory and leaves the generated file there.
+:
+{{
+  c = $path($create_compress_files)
+
+  : abc
+  :
+  ln -s $c ./ &create_compress_files;
+  sh $src_base/test_compress.sh compress_generated_abc $bin >- \
+    &compress_generated_abc
+
+  : text
+  :
+  ln -s $c ./ &create_compress_files;
+  sh $src_base/test_compress.sh compress_generated_text $bin >- \
+    &compress_generated_text
+
+  : random
+  :
+  ln -s $c ./ &create_compress_files;
+  sh $src_base/test_compress.sh compress_generated_random $bin >- \
+    &compress_generated_random
+}}

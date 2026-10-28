@@ -1,0 +1,42 @@
+# Upstream's command line tool tests (see tests/tests.cmake). These are
+# POSIX shell scripts that upstream only runs on POSIX systems, which we do
+# as well. Each takes the directory of the executables as its argument and
+# reads its input files relative to the srcdir environment variable.
+#
+# Note that upstream runs these tests only if all the encoders, decoders,
+# and integrity checks are enabled, which is always the case for the
+# liblzma package.
+#
+posix = ($c.target.class != 'windows')
+
+if $posix
+{
+  import xz     = xz%exe{xz}
+  import xzdiff = xz%exe{xzdiff}
+  import xzgrep = xz%exe{xzgrep}
+
+  ./: testscript $xz $xzdiff $xzgrep exe{create_compress_files}
+
+  testscript{*}:
+  {
+    test = $xz
+
+    create_compress_files = exe{create_compress_files}
+  }
+}
+
+./: file{test_*.sh xzgrep_expected_output} files/file{*}
+
+# The program that generates the test_compress.sh input files.
+#
+exe{create_compress_files}:
+{
+  test    = false
+  install = false
+}
+
+exe{create_compress_files}: c{create_compress_files} src/common/h{sysdefs}
+
+c.poptions =+ "-I$src_base/src/common"
+
+c.poptions += -DHAVE_STDBOOL_H -DHAVE__BOOL -DHAVE_STDINT_H -DHAVE_INTTYPES_H
