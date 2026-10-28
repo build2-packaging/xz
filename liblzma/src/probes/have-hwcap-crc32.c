@@ -1,10 +1,12 @@
-#include <sys/auxv.h>
+#ifndef CONTROL
+#  include <sys/auxv.h>
+#endif
 
 unsigned long f (void)
 {
 #ifndef CONTROL
   return HWCAP_CRC32;
 #else
-  return AT_HWCAP;
+  return 1;
 #endif
 }

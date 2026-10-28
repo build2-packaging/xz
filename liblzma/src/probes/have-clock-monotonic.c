@@ -2,11 +2,11 @@
 
 int f (void)
 {
-  struct timespec ts;
-
 #ifndef CONTROL
+  struct timespec ts;
   return clock_gettime (CLOCK_MONOTONIC, &ts);
 #else
-  return clock_gettime (CLOCK_REALTIME, &ts);
+  time_t t = time (NULL);
+  return (int) t;
 #endif
 }

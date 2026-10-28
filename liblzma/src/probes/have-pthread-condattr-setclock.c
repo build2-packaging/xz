@@ -10,6 +10,7 @@ int f (void)
   pthread_condattr_t a;
   return pthread_condattr_setclock (&a, CLOCK_MONOTONIC);
 #else
-  return (int) CLOCK_MONOTONIC;
+  time_t t = time (NULL);
+  return (int) t;
 #endif
 }

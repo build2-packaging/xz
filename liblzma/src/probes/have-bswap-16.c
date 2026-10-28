@@ -1,4 +1,6 @@
-#include <byteswap.h>
+#ifndef CONTROL
+#  include <byteswap.h>
+#endif
 
 int f (void)
 {

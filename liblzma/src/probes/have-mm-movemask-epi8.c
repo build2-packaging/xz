@@ -1,12 +1,13 @@
-#include <immintrin.h>
+#ifndef CONTROL
+#  include <immintrin.h>
+#endif
 
 int f (void)
 {
-  __m128i x = {0};
-
 #ifndef CONTROL
+  __m128i x = {0};
   return _mm_movemask_epi8 (x);
 #else
-  return (int) sizeof (x);
+  return 1;
 #endif
 }

@@ -311,28 +311,48 @@ for h: byteswap cpuid immintrin sys-param sys-endian sys-byteorder
 
 # C probes.
 #
-# Note that the rule expects the probe source to be the first prerequisite.
+# Upstream performs some checks only if another one succeeds (for example,
+# it only checks for _mm_movemask_epi8() if immintrin.h is available). The
+# probes are compiled unconditionally instead and the parent buildfile
+# combines the results. Note that each probe only includes the headers
+# specific to its feature in the probe (as opposed to control) variant
+# since the header's absence means the feature is absent.
 #
-for p: clock-gettime                     clock-monotonic                   pthread-condattr-setclock         builtin-bswapxx                   bswap-16                          bswap-32                          bswap-64                          builtin-assume-aligned            cpucores-sched-getaffinity        cpucores-cpuset                   cpucores-sysctl                   cpucores-sysconf                  cpucores-pstat-getdynamic         physmem-aix                       physmem-sysconf                   physmem-sysctl                    physmem-pstat-getstatic           func-attribute-constructor        mm-movemask-epi8                  usable-clmul                      arm64-crc32                       getauxval                         hwcap-crc32                       elf-aux-info                      sysctlbyname                      loongarch-crc32
+# @@ We would rather use the short-circuiting of the probe rule (make one
+#    probe a prerequisite of another) but this makes build2 0.18.1 abort in
+#    perform_execute() if this project is imported from a buildfile that is
+#    loaded as a directory prerequisite.
+#
+for p: clock-gettime              \
+       clock-monotonic            \
+       pthread-condattr-setclock  \
+       builtin-bswapxx            \
+       bswap-16                   \
+       bswap-32                   \
+       bswap-64                   \
+       builtin-assume-aligned     \
+       cpucores-sched-getaffinity \
+       cpucores-cpuset            \
+       cpucores-sysctl            \
+       cpucores-sysconf           \
+       cpucores-pstat-getdynamic  \
+       physmem-aix                \
+       physmem-sysconf            \
+       physmem-sysctl             \
+       physmem-pstat-getstatic    \
+       func-attribute-constructor \
+       mm-movemask-epi8           \
+       usable-clmul               \
+       arm64-crc32                \
+       getauxval                  \
+       hwcap-crc32                \
+       elf-aux-info               \
+       sysctlbyname               \
+       loongarch-crc32
 {
   buildfile{have-$p}: c{have-$p}
   probes += buildfile{have-$p}
 }
-
-# Probes that only make sense (or only compile) if another result is true.
-# Upstream performs most of these checks conditionally as well.
-#
-buildfile{have-clock-monotonic}:           buildfile{have-clock-gettime}
-buildfile{have-pthread-condattr-setclock}: buildfile{have-clock-monotonic}
-
-buildfile{have-bswap-16 have-bswap-32 have-bswap-64}: buildfile{have-byteswap-h}
-
-buildfile{have-mm-movemask-epi8 have-usable-clmul}: buildfile{have-immintrin-h}
-
-buildfile{have-getauxval have-elf-aux-info have-sysctlbyname}: \
-  buildfile{have-arm64-crc32}
-
-buildfile{have-hwcap-crc32}: buildfile{have-getauxval}
 
 # Compilers that don't support an attribute may only warn about it.
 #

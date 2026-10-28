@@ -106,47 +106,76 @@ lib{lzma}: h{config}
 using autoconf
 
 h{config}: in{config}
+
+# The probe results are only available during perform (see probes/buildfile
+# for details). Note also that upstream only performs some checks if another
+# one succeeds and so we combine the results the same way.
+#
+if ($build.meta_operation == 'perform')
 {
-  HAVE___BUILTIN_BSWAPXX       = $(probes/ have_builtin_bswapxx)
-  HAVE_BYTESWAP_H              = $(probes/ have_byteswap_h)
-  HAVE_BSWAP_16                = $(probes/ have_bswap_16)
-  HAVE_BSWAP_32                = $(probes/ have_bswap_32)
-  HAVE_BSWAP_64                = $(probes/ have_bswap_64)
-  HAVE_SYS_ENDIAN_H            = $(probes/ have_sys_endian_h)
-  HAVE_SYS_BYTEORDER_H         = $(probes/ have_sys_byteorder_h)
-  HAVE___BUILTIN_ASSUME_ALIGNED = $(probes/ have_builtin_assume_aligned)
+  h{config}:
+  {
+    bswapxx  = $(probes/ have_builtin_bswapxx)
+    byteswap = (!$bswapxx && $(probes/ have_byteswap_h))
+    endian   = (!$bswapxx && !$byteswap && $(probes/ have_sys_endian_h))
 
-  HAVE_CLOCK_GETTIME             = $(probes/ have_clock_gettime)
-  HAVE_CLOCK_MONOTONIC           = $(probes/ have_clock_monotonic)
-  HAVE_PTHREAD_CONDATTR_SETCLOCK = $(probes/ have_pthread_condattr_setclock)
+    HAVE___BUILTIN_BSWAPXX = $bswapxx
+    HAVE_BYTESWAP_H        = $byteswap
+    HAVE_BSWAP_16          = ($byteswap && $(probes/ have_bswap_16))
+    HAVE_BSWAP_32          = ($byteswap && $(probes/ have_bswap_32))
+    HAVE_BSWAP_64          = ($byteswap && $(probes/ have_bswap_64))
+    HAVE_SYS_ENDIAN_H      = $endian
+    HAVE_SYS_BYTEORDER_H   = (!$bswapxx && !$byteswap && !$endian && \
+                              $(probes/ have_sys_byteorder_h))
 
-  HAVE_SYS_PARAM_H = $(probes/ have_sys_param_h)
+    HAVE___BUILTIN_ASSUME_ALIGNED = $(probes/ have_builtin_assume_aligned)
 
-  TUKLIB_CPUCORES_SCHED_GETAFFINITY = $(probes/ have_cpucores_sched_getaffinity)
-  TUKLIB_CPUCORES_CPUSET            = $(probes/ have_cpucores_cpuset)
-  TUKLIB_CPUCORES_SYSCTL            = $(probes/ have_cpucores_sysctl)
-  TUKLIB_CPUCORES_SYSCONF           = $(probes/ have_cpucores_sysconf)
-  TUKLIB_CPUCORES_PSTAT_GETDYNAMIC  = $(probes/ have_cpucores_pstat_getdynamic)
+    gettime   = $(probes/ have_clock_gettime)
+    monotonic = ($gettime && $(probes/ have_clock_monotonic))
 
-  TUKLIB_PHYSMEM_AIX             = $(probes/ have_physmem_aix)
-  TUKLIB_PHYSMEM_SYSCONF         = $(probes/ have_physmem_sysconf)
-  TUKLIB_PHYSMEM_SYSCTL          = $(probes/ have_physmem_sysctl)
-  TUKLIB_PHYSMEM_PSTAT_GETSTATIC = $(probes/ have_physmem_pstat_getstatic)
+    HAVE_CLOCK_GETTIME             = $gettime
+    HAVE_CLOCK_MONOTONIC           = $monotonic
+    HAVE_PTHREAD_CONDATTR_SETCLOCK = \
+      ($monotonic && $(probes/ have_pthread_condattr_setclock))
 
-  HAVE_FUNC_ATTRIBUTE_CONSTRUCTOR = $(probes/ have_func_attribute_constructor)
+    HAVE_SYS_PARAM_H = $(probes/ have_sys_param_h)
 
-  HAVE_CPUID_H           = $(probes/ have_cpuid_h)
-  HAVE_IMMINTRIN_H       = $(probes/ have_immintrin_h)
-  HAVE__MM_MOVEMASK_EPI8 = $(probes/ have_mm_movemask_epi8)
-  HAVE_USABLE_CLMUL      = $(probes/ have_usable_clmul)
+    TUKLIB_CPUCORES_SCHED_GETAFFINITY = \
+      $(probes/ have_cpucores_sched_getaffinity)
 
-  HAVE_ARM64_CRC32  = $(probes/ have_arm64_crc32)
-  HAVE_GETAUXVAL    = $(probes/ have_getauxval)
-  HAVE_HWCAP_CRC32  = $(probes/ have_hwcap_crc32)
-  HAVE_ELF_AUX_INFO = $(probes/ have_elf_aux_info)
-  HAVE_SYSCTLBYNAME = $(probes/ have_sysctlbyname)
+    TUKLIB_CPUCORES_PSTAT_GETDYNAMIC = \
+      $(probes/ have_cpucores_pstat_getdynamic)
 
-  HAVE_LOONGARCH_CRC32 = $(probes/ have_loongarch_crc32)
+    TUKLIB_CPUCORES_CPUSET  = $(probes/ have_cpucores_cpuset)
+    TUKLIB_CPUCORES_SYSCTL  = $(probes/ have_cpucores_sysctl)
+    TUKLIB_CPUCORES_SYSCONF = $(probes/ have_cpucores_sysconf)
+
+    TUKLIB_PHYSMEM_AIX             = $(probes/ have_physmem_aix)
+    TUKLIB_PHYSMEM_SYSCONF         = $(probes/ have_physmem_sysconf)
+    TUKLIB_PHYSMEM_SYSCTL          = $(probes/ have_physmem_sysctl)
+    TUKLIB_PHYSMEM_PSTAT_GETSTATIC = $(probes/ have_physmem_pstat_getstatic)
+
+    HAVE_FUNC_ATTRIBUTE_CONSTRUCTOR = \
+      $(probes/ have_func_attribute_constructor)
+
+    immintrin = $(probes/ have_immintrin_h)
+
+    HAVE_CPUID_H           = $(probes/ have_cpuid_h)
+    HAVE_IMMINTRIN_H       = $immintrin
+    HAVE__MM_MOVEMASK_EPI8 = ($immintrin && $(probes/ have_mm_movemask_epi8))
+    HAVE_USABLE_CLMUL      = ($immintrin && $(probes/ have_usable_clmul))
+
+    arm64     = $(probes/ have_arm64_crc32)
+    getauxval = ($arm64 && $(probes/ have_getauxval))
+
+    HAVE_ARM64_CRC32  = $arm64
+    HAVE_GETAUXVAL    = $getauxval
+    HAVE_HWCAP_CRC32  = ($getauxval && $(probes/ have_hwcap_crc32))
+    HAVE_ELF_AUX_INFO = ($arm64 && $(probes/ have_elf_aux_info))
+    HAVE_SYSCTLBYNAME = ($arm64 && $(probes/ have_sysctlbyname))
+
+    HAVE_LOONGARCH_CRC32 = $(probes/ have_loongarch_crc32)
+  }
 }
 
 # Build options.
@@ -220,7 +249,8 @@ if ($symver == 'linux')
   objs{*}: c.poptions += -DHAVE_SYMBOL_VERSIONS_LINUX=1
 
 if ($symver != [null])
-  libs{lzma}: c.loptions += "-Wl,--version-script=$src_base/liblzma/liblzma_$(symver).map"
+  libs{lzma}: c.loptions += \
+    "-Wl,--version-script=$src_base/liblzma/liblzma_$(symver).map"
 
 # Export options.
 #
