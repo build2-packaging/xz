@@ -3,14 +3,17 @@ name: lzmainfo
 version: 5.8.4-a.0.z
 language: c
 project: xz
-summary: lzmainfo C executable
-license: other: proprietary ; Not free/open source.
+summary: .lzma file header information command line utility
+license: 0BSD AND LGPL-2.1-or-later ; getopt_long() replacement LGPLv2.1+.
+topics: data compression, LZMA, LZMA2, XZ
 description-file: README
 package-description-file: PACKAGE-README.md
 changes-file: NEWS
-url: https://example.org/upstream
-email: upstream@example.org
+url: https://tukaani.org/xz/
+src-url: https://github.com/tukaani-project/xz
+email: xz@tukaani.org
 package-url: https://github.com/build2-packaging/xz
 package-email: packaging@build2.org ; Mailing list.
 depends: * build2 >= 0.18.0
 depends: * bpkg >= 0.18.0
+depends: liblzma == $
