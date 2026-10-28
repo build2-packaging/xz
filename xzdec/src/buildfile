@@ -134,6 +134,37 @@ c.poptions += -DHAVE_CONFIG_H
 if $getopt
   c.poptions += -D__GETOPT_PREFIX=rpl_
 
+# Windows resource files (see build/w32res.build for details).
+#
+# Note that for executables upstream's resource files also embed an
+# application manifest that conflicts with the one embedded by the cc link
+# rule. So we omit it the same way upstream does for Cygwin. This, however,
+# means that the tools don't get upstream's UTF-8 active code page and long
+# path awareness settings.
+#
+# Note also that the resource files read the package information from
+# config.h and the version from the library's lzma/version.h.
+#
+./: xzdec/file{xzdec_w32res.rc lzmadec_w32res.rc} \
+    common/file{common_w32res.rc} # Distribute.
+
+if ($c.target.class == 'windows')
+{
+  for e: xzdec lzmadec
+  {
+    xzdec/exe{$e}: xzdec/w32res{$e}: include = adhoc
+    xzdec/exe{$e}: c.loptions += "$out_base/xzdec/$e.$w32res_extension"
+
+    xzdec/w32res{$e}: xzdec/file{$(e)_w32res.rc} common/file{common_w32res.rc} \
+                      h{config}
+    {
+      w32res.poptions = -D__CYGWIN__ -DHAVE_CONFIG_H "-I$out_pfx" \
+                        "-I$src_pfx/common"                       \
+                        $regex.filter_match($($lib: c.export.poptions), '-I.+')
+    }
+  }
+}
+
 # Note that this must come after the above options since it appends to
 # them.
 #
