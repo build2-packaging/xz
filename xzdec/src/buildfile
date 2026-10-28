@@ -1,9 +1,140 @@
-libs =
-#import libs += libhello%lib{hello}
+# Upstream builds xzdec and lzmadec from src/xzdec/xzdec.c plus a few tuklib
+# modules from src/common/ (which it shares with liblzma and the other
+# command line tools) and, if the system doesn't provide getopt_long(), the
+# Gnulib replacement from lib/. We symlink these directories and follow
+# upstream's CMakeLists.txt, which is the reference for everything below.
+#
+# Note that we cannot build exe{xzdec} in this directory since its output
+# would clash with the xzdec/ object directory. So we build both
+# executables in xzdec/ instead.
+#
+import! [metadata, rule_hint=c.link] lib = liblzma%lib{lzma}
 
-exe{xzdec}: {h c}{**} $libs testscript
+# Upstream only builds these tools if the decoders are enabled.
+#
+if! $empty($($lib: liblzma.decoders))
+{
+  ./: xzdec/exe{xzdec lzmadec} probes/
 
+  # Upstream only installs the man page (which covers both tools) on POSIX
+  # systems.
+  #
+  if ($c.target.class != 'windows')
+    ./: xzdec/man1{xzdec lzmadec}
+}
+
+# Enable the system extensions (as upstream's tuklib_use_system_extensions()
+# does) before probing since some checks depend on them.
+#
+if ($c.class != 'msvc')
+  c.poptions += -D_GNU_SOURCE              \
+                -D_NETBSD_SOURCE           \
+                -D_OPENBSD_SOURCE          \
+                -D__EXTENSIONS__           \
+                -D_POSIX_PTHREAD_SEMANTICS \
+                -D_DARWIN_C_SOURCE         \
+                -D_TANDEM_SOURCE           \
+                -D_ALL_SOURCE
+
+include probes/
+
+# Whether to use the getopt_long() replacement. Note that it is only known
+# during perform (see probes/buildfile for details) and elsewhere we keep the
+# replacement as an ad hoc prerequisite so that it is still distributed.
+#
+getopt = ($build.meta_operation == 'perform' && !$(probes/ have_getopt_long))
+
+# Sources.
+#
+# The only difference between the two tools is the LZMADEC macro and so we
+# compile xzdec.c into a differently named object file for lzmadec. Note
+# that this object file also needs the library as a prerequisite for its
+# export options.
+#
+xzdec/exe{xzdec}: xzdec/c{xzdec}
+xzdec/exe{lzmadec}: xzdec/obje{lzmadec}
+
+xzdec/obje{lzmadec}: xzdec/c{xzdec} $lib
+for e: xzdec lzmadec
+{
+  xzdec/exe{$e}: h{config}
+
+  xzdec/exe{$e}: common/h{my_landlock           \
+                          sysdefs               \
+                          tuklib_common         \
+                          tuklib_config         \
+                          tuklib_exit           \
+                          tuklib_gettext        \
+                          tuklib_mbstr_nonprint \
+                          tuklib_progname}
+
+  xzdec/exe{$e}: common/c{tuklib_exit tuklib_mbstr_nonprint tuklib_progname}
+
+  xzdec/exe{$e}: lib/c{getopt getopt1}                            \
+                 lib/h{getopt getopt_int getopt-cdefs getopt-core \
+                       getopt-ext getopt-pfx-core getopt-pfx-ext}: \
+    include = ($getopt ? true : adhoc)
+
+  # Note that the library must come last for linkers that resolve symbols
+  # from archives (such as import libraries) in the command line order.
+  #
+  xzdec/exe{$e}: $lib
+}
+
+xzdec/man1{lzmadec}: xzdec/man1{xzdec}
+{{
+  cp $path($<) $path($>)
+}}
+
+# The getopt_long() replacement header. Upstream copies it as is (and so do
+# we).
+#
+lib/h{getopt}: lib/in{getopt.in.h}
+
+# Configuration header.
+#
+using autoconf
+
+h{config}: in{config}
+
+# The probe results are only available during perform (see probes/buildfile
+# for details). Note also that upstream only checks for a sandboxing method
+# if the previous one is not available and so we combine the results the
+# same way.
+#
+if ($build.meta_operation == 'perform')
+{
+  h{config}:
+  {
+    HAVE_PROGRAM_INVOCATION_NAME = $(probes/ have_program_invocation_name)
+    HAVE_MBRTOWC                 = $(probes/ have_mbrtowc)
+
+    capsicum = $(probes/ have_cap_rights_limit)
+    pledge   = (!$capsicum && $(probes/ have_pledge))
+
+    HAVE_CAP_RIGHTS_LIMIT = $capsicum
+    HAVE_PLEDGE           = $pledge
+    HAVE_LINUX_LANDLOCK   = \
+      (!$capsicum && !$pledge && $(probes/ have_linux_landlock))
+  }
+}
+
+# Build options.
+#
 out_pfx = [dir_path] $out_root/src/
 src_pfx = [dir_path] $src_root/src/
 
-c.poptions =+ "-I$out_pfx" "-I$src_pfx"
+c.poptions =+ "-I$out_pfx" "-I$src_pfx/common"
+
+if $getopt
+  c.poptions =+ "-I$out_pfx/lib" "-I$src_pfx/lib"
+
+c.poptions += -DHAVE_CONFIG_H
+
+if $getopt
+  c.poptions += -D__GETOPT_PREFIX=rpl_
+
+# Note that this must come after the above options since it appends to
+# them.
+#
+xzdec/obje{lzmadec}: c.poptions += -DLZMADEC
