@@ -1,9 +1,9 @@
-# lzmainfo - An executable
+# lzmainfo - .lzma file header information command line utility
 
-This is a `build2` package for the [`<UPSTREAM-NAME>`](https://<UPSTREAM-URL>)
-executable. It is a <SUMMARY-OF-FUNCTIONALITY>.
-
-Note that the `lzmainfo` executable in this package provides `build2` metadata.
+This is a `build2` package for the [`xz`](https://tukaani.org/xz/)
+`lzmainfo` executable. It shows the information stored in the header of
+legacy `.lzma` files, such as the uncompressed size, the dictionary size,
+and the LZMA properties.
 
 
 ## Usage
@@ -13,33 +13,11 @@ To start using `lzmainfo` in your project, add the following build-time
 appropriate:
 
 ```
-depends: * lzmainfo ^<VERSION>
+depends: * lzmainfo ^5.8.4
 ```
 
 Then import the executable in your `buildfile`:
 
 ```
-import! [metadata] <TARGET> = lzmainfo%exe{<TARGET>}
+import lzmainfo = lzmainfo%exe{lzmainfo}
 ```
-
-
-## Importable targets
-
-This package provides the following importable targets:
-
-```
-exe{<TARGET>}
-```
-
-<DESCRIPTION-OF-IMPORTABLE-TARGETS>
-
-
-## Configuration variables
-
-This package provides the following configuration variables:
-
-```
-[bool] config.lzmainfo.<VARIABLE> ?= false
-```
-
-<DESCRIPTION-OF-CONFIG-VARIABLES>
