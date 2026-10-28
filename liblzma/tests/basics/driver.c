@@ -1,5 +1,4 @@
-#include <stdio.h>
-#include <errno.h>
+#include <stdint.h>
 #include <string.h>
 
 #include <lzma.h>
@@ -7,67 +6,48 @@
 #undef NDEBUG
 #include <assert.h>
 
-#ifdef _WIN32
-#define tmpfile mytmpfile
-static FILE *mytmpfile ();
-#endif
-
 int main ()
 {
-  char b[256];
-
-  /* Basics.
+  /* Version.
    */
   {
-    FILE *o = tmpfile ();
-    assert (say_hello (o, "World") > 0);
-    rewind (o);
-    assert (fread (b, 1, sizeof (b), o) == 14 &&
-            strncmp (b, "Hello, World!\n", 14) == 0);
-    fclose (o);
+    assert (lzma_version_number () == LZMA_VERSION);
+    assert (strcmp (lzma_version_string (), LZMA_VERSION_STRING) == 0);
   }
 
-  /* Empty name.
+  /* Integrity checks.
    */
   {
-    FILE *o = tmpfile ();
-    assert (say_hello (o, "") < 0 && errno == EINVAL);
-    fclose (o);
+    assert (lzma_check_is_supported (LZMA_CHECK_CRC32));
+    assert (lzma_check_is_supported (LZMA_CHECK_CRC64));
+    assert (lzma_check_is_supported (LZMA_CHECK_SHA256));
+
+    assert (lzma_crc32 ((const uint8_t*) "123456789", 9, 0) == 0xCBF43926);
+  }
+
+  /* Round trip through the .xz format.
+   */
+  {
+    const uint8_t s[] = "Hello, World!";
+
+    uint8_t c[256];
+    size_t cn = 0;
+
+    assert (lzma_easy_buffer_encode (LZMA_PRESET_DEFAULT, LZMA_CHECK_CRC64,
+                                     NULL,
+                                     s, sizeof (s),
+                                     c, &cn, sizeof (c)) == LZMA_OK);
+
+    uint8_t d[sizeof (s)];
+    size_t ci = 0, dn = 0;
+    uint64_t m = UINT64_MAX;
+
+    assert (lzma_stream_buffer_decode (&m, 0, NULL,
+                                       c, &ci, cn,
+                                       d, &dn, sizeof (d)) == LZMA_OK);
+
+    assert (ci == cn && dn == sizeof (s) && memcmp (d, s, sizeof (s)) == 0);
   }
 
   return 0;
 }
-
-#ifdef _WIN32
-#include <windows.h>
-#include <fcntl.h>
-#include <io.h>
-
-FILE *mytmpfile ()
-{
-  char d[MAX_PATH + 1], p[MAX_PATH + 1];
-  if (GetTempPathA (sizeof (d), d) == 0 ||
-      GetTempFileNameA (d, "tmp", 0, p) == 0)
-    return NULL;
-
-  HANDLE h = CreateFileA (p,
-                          GENERIC_READ | GENERIC_WRITE,
-                          0,
-                          NULL,
-                          CREATE_ALWAYS,
-                          FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE,
-                          NULL);
-  if (h == INVALID_HANDLE_VALUE)
-    return NULL;
-
-  int fd = _open_osfhandle ((intptr_t) h, _O_RDWR);
-  if (fd == -1)
-    return NULL;
-
-  FILE *f = _fdopen (fd, "wb+");
-  if (f == NULL)
-    _close (fd);
-
-  return f;
-}
-#endif
