@@ -3,4 +3,7 @@ $out_root/
   include src/
 }
 
-export $out_root/src/$import.target
+# Note that the executable is built in the lzmainfo/ subdirectory (see
+# src/buildfile for details).
+#
+export $out_root/src/lzmainfo/$import.target
