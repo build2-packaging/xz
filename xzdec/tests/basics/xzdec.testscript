@@ -1,0 +1,25 @@
+# Basic tests that, unlike upstream's (see ../xzdec/), also run on Windows.
+# The input files come from upstream's test suite.
+#
+
+: version-banner
+:
+$* --version >>~/EOO/
+/xzdec \(XZ Utils\) [0-9]+\.[0-9]+\.[0-9]+/
+/liblzma [0-9]+\.[0-9]+\.[0-9]+/
+EOO
+
+: decompress-xz
+:
+$* $src_base/good-1-check-crc32.xz >>EOO
+Hello
+World!
+EOO
+
+: corrupt-input
+:
+: Test that the integrity check failure is detected.
+:
+$* $src_base/bad-1-check-crc32.xz >- 2>>~/EOE/ != 0
+/.+bad-1-check-crc32\.xz: File is corrupt/
+EOE

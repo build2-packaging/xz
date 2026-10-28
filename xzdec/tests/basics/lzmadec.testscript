@@ -1,0 +1,25 @@
+# Basic tests that, unlike upstream's (see ../xzdec/), also run on Windows.
+# The input files come from upstream's test suite.
+#
+
+: version-banner
+:
+$* --version >>~/EOO/
+/lzmadec \(XZ Utils\) [0-9]+\.[0-9]+\.[0-9]+/
+/liblzma [0-9]+\.[0-9]+\.[0-9]+/
+EOO
+
+: decompress-lzma
+:
+$* $src_base/good-known_size-with_eopm.lzma >>EOO
+Hello
+World!
+EOO
+
+: xz-input
+:
+: Test that the .xz format is rejected.
+:
+$* $src_base/good-1-check-crc32.xz >- 2>>~/EOE/ != 0
+/.+good-1-check-crc32\.xz: File format not recognized/
+EOE

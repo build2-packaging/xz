@@ -1,0 +1,7 @@
+import xzdec   = xzdec%exe{xzdec}
+import lzmadec = xzdec%exe{lzmadec}
+
+./: testscript{xzdec lzmadec} $xzdec $lzmadec file{*.xz *.lzma}
+
+testscript{xzdec}@./:   test = $xzdec
+testscript{lzmadec}@./: test = $lzmadec
