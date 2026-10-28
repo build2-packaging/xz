@@ -3,3 +3,6 @@ location: liblzma/
 
 :
 location: xz/
+
+:
+location: xzdec/

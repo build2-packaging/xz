@@ -1,0 +1,7 @@
+project = xzdec
+
+using version
+using config
+using test
+using install
+using dist
