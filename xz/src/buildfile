@@ -1,9 +1,324 @@
-libs =
-#import libs += libhello%lib{hello}
+# Upstream builds xz from src/xz/ plus a few tuklib modules from src/common/
+# (which it shares with liblzma and the other command line tools) and, if
+# the system doesn't provide getopt_long(), the Gnulib replacement from
+# lib/. We symlink these directories and follow upstream's CMakeLists.txt,
+# which is the reference for everything below.
+#
+# Note that we cannot build exe{xz} in this directory since its output
+# would clash with the xz/ object directory. So we build it (and its
+# aliases, see below) in xz/ instead.
+#
+import! [metadata, rule_hint=c.link] lib = liblzma%lib{lzma}
 
-exe{xz}: {h c}{**} $libs testscript
+./: xz/exe{xz} xz/man1{xz} probes/
 
+# Features.
+#
+# The xz options and messages depend on which filters and integrity checks
+# the library supports and so we get these from its metadata.
+#
+encoders = $($lib: liblzma.encoders)
+decoders = $($lib: liblzma.decoders)
+checks   = $($lib: liblzma.checks)
+threads  = $($lib: liblzma.threads)
+
+# Aliases.
+#
+# On POSIX systems upstream installs the unxz and xzcat (plus lzma, unlzma,
+# and lzcat for LZMA Utils compatibility) symlinks to xz, which selects the
+# operation mode based on the program name, as well as the corresponding
+# symlinks to its man page. There is no way to install a symlink from a
+# buildfile and so we link each alias from the same object files and copy
+# the man page instead.
+#
+aliases = ($c.target.class != 'windows' ? unxz xzcat lzma unlzma lzcat : )
+
+for a: $aliases
+  ./: xz/exe{$a} xz/man1{$a}
+
+# Enable the system extensions (as upstream's tuklib_use_system_extensions()
+# does) before probing since some checks depend on them.
+#
+if ($c.class != 'msvc')
+  c.poptions += -D_GNU_SOURCE              \
+                -D_NETBSD_SOURCE           \
+                -D_OPENBSD_SOURCE          \
+                -D__EXTENSIONS__           \
+                -D_POSIX_PTHREAD_SEMANTICS \
+                -D_DARWIN_C_SOURCE         \
+                -D_TANDEM_SOURCE           \
+                -D_ALL_SOURCE
+
+include probes/
+
+# Whether to use the getopt_long() replacement. Note that it is only known
+# during perform (see probes/buildfile for details) and elsewhere we keep the
+# replacement as an ad hoc prerequisite so that it is still distributed.
+#
+getopt = ($build.meta_operation == 'perform' && !$(probes/ have_getopt_long))
+
+# Sources.
+#
+# Note that the aliases list the same sources and so share the object files
+# with xz. Note also that upstream only builds the --list support if the
+# decoders are enabled.
+#
+for e: xz $aliases
+{
+  xz/exe{$e}: xz/{h c}{* -list} h{config}
+
+  xz/exe{$e}: xz/{h c}{list}: include = (!$empty($decoders))
+
+  xz/exe{$e}: common/h{my_landlock           \
+                       mythread              \
+                       sysdefs               \
+                       tuklib_common         \
+                       tuklib_config         \
+                       tuklib_exit           \
+                       tuklib_gettext        \
+                       tuklib_integer        \
+                       tuklib_mbstr          \
+                       tuklib_mbstr_nonprint \
+                       tuklib_mbstr_wrap     \
+                       tuklib_open_stdxxx    \
+                       tuklib_progname}
+
+  xz/exe{$e}: common/c{tuklib_exit           \
+                       tuklib_mbstr_fw       \
+                       tuklib_mbstr_nonprint \
+                       tuklib_mbstr_width    \
+                       tuklib_mbstr_wrap     \
+                       tuklib_open_stdxxx    \
+                       tuklib_progname}
+
+  xz/exe{$e}: lib/c{getopt getopt1}                            \
+              lib/h{getopt getopt_int getopt-cdefs getopt-core \
+                    getopt-ext getopt-pfx-core getopt-pfx-ext}: \
+    include = ($getopt ? true : adhoc)
+
+  # Note that the library must come last for linkers that resolve symbols
+  # from archives (such as import libraries) in the command line order.
+  #
+  xz/exe{$e}: $lib
+}
+
+for a: $aliases
+{
+  xz/man1{$a}: xz/man1{xz}
+  {{
+    cp $path($<) $path($>)
+  }}
+}
+
+# Scripts.
+#
+# Upstream only installs the scripts (and their aliases, which select the
+# operation mode based on the program name, similar to xz) on POSIX systems
+# and only if the decoders are enabled.
+#
+scripts        =
+script_aliases =
+
+if ($c.target.class != 'windows' && !$empty($decoders))
+{
+  scripts = xzdiff xzgrep xzmore xzless
+
+  script_aliases = xzcmp@xzdiff   lzdiff@xzdiff  lzcmp@xzdiff   \
+                   xzegrep@xzgrep xzfgrep@xzgrep lzgrep@xzgrep  \
+                   lzegrep@xzgrep lzfgrep@xzgrep                \
+                   lzmore@xzmore                                \
+                   lzless@xzless
+}
+
+using in
+
+# Note that we need to specify the rule hint since otherwise the autoconf
+# rule (which is also loaded) is matched.
+#
+for n: $scripts
+{
+  ./: scripts/exe{$n} scripts/man1{$n}
+
+  [rule_hint=in] scripts/exe{$n}: scripts/in{$n}
+}
+
+for p: $script_aliases
+{
+  a = $first($p)
+  n = $second($p)
+
+  ./: scripts/exe{$a} scripts/man1{$a}
+
+  [rule_hint=in] scripts/exe{$a}: scripts/in{$n}
+
+  scripts/man1{$a}: scripts/man1{$n}
+  {{
+    cp $path($<) $path($>)
+  }}
+}
+
+scripts/exe{*}:
+{
+  in.symbol = '@'
+  in.mode   = lax
+
+  # Note that on Solaris upstream uses the POSIX shell from /usr/xpg4/bin/
+  # and adds this directory to PATH in the scripts.
+  #
+  POSIX_SHELL             = /bin/sh
+  enable_path_for_scripts =
+
+  xz                = xz
+  PACKAGE_NAME      = 'XZ Utils'
+  PACKAGE_VERSION   = "$version.major.$version.minor.$version.patch"
+  PACKAGE_BUGREPORT = xz@tukaani.org
+}
+
+if ($c.target.system == 'solaris')
+{
+  scripts/exe{*}:
+  {
+    POSIX_SHELL             = /usr/xpg4/bin/sh
+    enable_path_for_scripts = 'PATH=/usr/xpg4/bin:$PATH'
+  }
+}
+
+# The getopt_long() replacement header. Upstream copies it as is (and so do
+# we).
+#
+lib/h{getopt}: lib/in{getopt.in.h}
+
+# Configuration header.
+#
+using autoconf
+
+h{config}: in{config}
+
+# The probe results are only available during perform (see probes/buildfile
+# for details). Note also that upstream only performs some checks if another
+# one fails or succeeds and so we combine the results the same way.
+#
+if ($build.meta_operation == 'perform')
+{
+  h{config}:
+  {
+    bswapxx  = $(probes/ have_builtin_bswapxx)
+    byteswap = (!$bswapxx && $(probes/ have_byteswap_h))
+    endian   = (!$bswapxx && !$byteswap && $(probes/ have_sys_endian_h))
+
+    HAVE___BUILTIN_BSWAPXX = $bswapxx
+    HAVE_BYTESWAP_H        = $byteswap
+    HAVE_BSWAP_16          = ($byteswap && $(probes/ have_bswap_16))
+    HAVE_BSWAP_32          = ($byteswap && $(probes/ have_bswap_32))
+    HAVE_BSWAP_64          = ($byteswap && $(probes/ have_bswap_64))
+    HAVE_SYS_ENDIAN_H      = $endian
+    HAVE_SYS_BYTEORDER_H   = (!$bswapxx && !$byteswap && !$endian && \
+                              $(probes/ have_sys_byteorder_h))
+
+    HAVE___BUILTIN_ASSUME_ALIGNED = $(probes/ have_builtin_assume_aligned)
+
+    gettime   = $(probes/ have_clock_gettime)
+    monotonic = ($gettime && $(probes/ have_clock_monotonic))
+
+    HAVE_CLOCK_GETTIME             = $gettime
+    HAVE_CLOCK_MONOTONIC           = $monotonic
+    HAVE_PTHREAD_CONDATTR_SETCLOCK = \
+      ($monotonic && $(probes/ have_pthread_condattr_setclock))
+
+    HAVE_PROGRAM_INVOCATION_NAME = $(probes/ have_program_invocation_name)
+
+    HAVE_MBRTOWC   = $(probes/ have_mbrtowc)
+    HAVE_WCWIDTH   = $(probes/ have_wcwidth)
+    HAVE_VASPRINTF = $(probes/ have_vasprintf)
+
+    HAVE_OPTRESET = (!$getopt && $(probes/ have_optreset))
+
+    HAVE_GETRLIMIT     = $(probes/ have_getrlimit)
+    HAVE_POSIX_FADVISE = $(probes/ have_posix_fadvise)
+
+    atim      = $(probes/ have_stat_st_atim_tv_nsec)
+    atimespec = (!$atim && $(probes/ have_stat_st_atimespec_tv_nsec))
+
+    HAVE_STRUCT_STAT_ST_ATIM_TV_NSEC      = $atim
+    HAVE_STRUCT_STAT_ST_ATIMESPEC_TV_NSEC = $atimespec
+    HAVE_STRUCT_STAT_ST_ATIMENSEC         = \
+      (!$atim && !$atimespec && $(probes/ have_stat_st_atimensec))
+
+    futimens  = $(probes/ have_futimens)
+    futimes   = (!$futimens && $(probes/ have_futimes))
+    futimesat = (!$futimens && !$futimes && $(probes/ have_futimesat))
+    utimes    = (!$futimens && !$futimes && !$futimesat && \
+                 $(probes/ have_utimes))
+    futime    = (!$futimens && !$futimes && !$futimesat && !$utimes && \
+                 $(probes/ have__futime))
+
+    HAVE_FUTIMENS  = $futimens
+    HAVE_FUTIMES   = $futimes
+    HAVE_FUTIMESAT = $futimesat
+    HAVE_UTIMES    = $utimes
+    HAVE__FUTIME   = $futime
+    HAVE_UTIME     = (!$futimens && !$futimes && !$futimesat && !$utimes && \
+                      !$futime && $(probes/ have_utime))
+
+    capsicum = $(probes/ have_cap_rights_limit)
+    pledge   = (!$capsicum && $(probes/ have_pledge))
+
+    HAVE_CAP_RIGHTS_LIMIT = $capsicum
+    HAVE_PLEDGE           = $pledge
+    HAVE_LINUX_LANDLOCK   = \
+      (!$capsicum && !$pledge && $(probes/ have_linux_landlock))
+  }
+}
+
+# Build options.
+#
 out_pfx = [dir_path] $out_root/src/
 src_pfx = [dir_path] $src_root/src/
 
-c.poptions =+ "-I$out_pfx" "-I$src_pfx"
+c.poptions =+ "-I$out_pfx" "-I$src_pfx/common"
+
+if $getopt
+  c.poptions =+ "-I$out_pfx/lib" "-I$src_pfx/lib"
+
+c.poptions += -DHAVE_CONFIG_H
+
+if $getopt
+  c.poptions += -D__GETOPT_PREFIX=rpl_
+
+if! $empty($encoders)
+  c.poptions += -DHAVE_ENCODERS
+
+if! $empty($decoders)
+  c.poptions += -DHAVE_DECODERS
+
+for e: $encoders
+  c.poptions += "-DHAVE_ENCODER_$string.ucase($e)"
+
+for d: $decoders
+  c.poptions += "-DHAVE_DECODER_$string.ucase($d)"
+
+for k: $checks
+  c.poptions += "-DHAVE_CHECK_$string.ucase($k)"
+
+if $($lib: liblzma.lzip_decoder)
+  c.poptions += -DHAVE_LZIP_DECODER
+
+c.poptions += "-DMYTHREAD_$string.ucase($threads)"
+
+# The amount of RAM (in MiB) to assume if xz cannot determine it at runtime
+# (upstream's default).
+#
+c.poptions += -DASSUME_RAM=128
+
+# Note that xz calls pthread_sigmask() and so needs the threading library
+# itself.
+#
+if ($threads == 'posix')
+  c.libs += -pthread
+
+# Installation.
+#
+# Upstream only installs the man pages on POSIX systems.
+#
+if ($c.target.class == 'windows')
+  man1{*}: install = false
