@@ -17,3 +17,6 @@
 # Use `binary` to make sure certain files are never auto-detected as text.
 #
 #*.png binary
+
+liblzma/src/common symlink=dir
+liblzma/src/liblzma symlink=dir
