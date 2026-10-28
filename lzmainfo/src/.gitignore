@@ -1,0 +1,5 @@
+lzmainfo
+
+# Testscript output directory (can be symlink).
+#
+test-lzmainfo
