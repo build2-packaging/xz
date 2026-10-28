@@ -300,8 +300,12 @@ liba{lzma}: c.export.poptions += -DLZMA_API_STATIC
 
 # Upstream keeps the ABI backwards-compatible across the stable releases of
 # the same major version and so we only embed the major version component
-# into the shared library name. On Linux we use upstream's soname
-# (liblzma.so.5).
+# into the shared library name.
+#
+# On Linux we follow upstream's naming, which uses the complete version for
+# the file name and its major component for the soname (liblzma.so.5.8.4
+# and liblzma.so.5). Note that the cc module expects this version in the
+# MAJOR.MINOR[.EXTRA] form and derives the soname from MAJOR.
 #
 # For pre-releases use the complete version to make sure they cannot be used
 # in place of another pre-release or the final version. See the version
@@ -310,7 +314,10 @@ liba{lzma}: c.export.poptions += -DLZMA_API_STATIC
 if $version.pre_release
   lib{lzma}: bin.lib.version = @"-$version.project_id"
 else
-  lib{lzma}: bin.lib.version = @"-$version.major" linux@"$version.major"
+{
+  v = "$(version.major).$(version.minor).$(version.patch)"
+  lib{lzma}: bin.lib.version = @"-$version.major" linux@"$v"
+}
 
 # Only install the public headers (lzma.h and lzma/*.h) into, say,
 # /usr/include/, as upstream does.
