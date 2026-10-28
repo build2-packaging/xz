@@ -21,3 +21,7 @@
 liblzma/src/common symlink=dir
 liblzma/src/liblzma symlink=dir
 liblzma/tests/liblzma/files symlink=dir
+xz/src/common symlink=dir
+xz/src/lib symlink=dir
+xz/src/scripts symlink=dir
+xz/src/xz symlink=dir
