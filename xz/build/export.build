@@ -3,7 +3,11 @@ $out_root/
   include src/
 }
 
-# Note that the executables are built in the xz/ subdirectory (see
-# src/buildfile for details).
+# Note that the executables are built in the xz/ subdirectory and the
+# scripts in scripts/ (see src/buildfile for details).
 #
-export $out_root/src/xz/$import.target
+d = ($regex.match($name($import.target), '[xl]z(diff|cmp|[ef]?grep|more|less)') \
+     ? scripts                                                                  \
+     : xz)
+
+export $out_root/src/$d/$import.target
