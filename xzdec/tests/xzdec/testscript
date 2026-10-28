@@ -1,28 +1,15 @@
-# Note that the diagnostics are discarded below since they vary from file to
-# file.
+# The test script expects xz and xzdec in the directories passed as its
+# arguments and so we set one up with symlinks to the executables being
+# tested.
 #
++mkdir bin
++ln -s $path($xz) bin/
++ln -s $0 bin/
 
-: good-files
-:
-: Test that the good files are decompressed successfully.
-:
-for f: $path_search("$src_base/files/good-*.xz")
-{
-  $* $f >-
-}
+bin = $~/bin
 
-: bad-files
+: decompress-files
 :
-: Test that the bad files are rejected.
+: Test decompression of the good, bad, and unsupported test files.
 :
-for f: $path_search("$src_base/files/bad-*.xz")
-{
-  $* $f >- 2>- != 0
-}
-
-: unsupported-check
-:
-: Test that a file with an unsupported integrity check is decompressed with
-: the warnings disabled.
-:
-$* -qQ $src_base/files/unsupported-check.xz >-
+env "srcdir=$src_base" -- sh $src_base/test_files.sh $bin $bin >-

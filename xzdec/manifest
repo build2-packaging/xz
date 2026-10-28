@@ -17,3 +17,4 @@ package-email: packaging@build2.org ; Mailing list.
 depends: * build2 >= 0.18.0
 depends: * bpkg >= 0.18.0
 depends: liblzma == $
+depends: xz == $ ; Tests.

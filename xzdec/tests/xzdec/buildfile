@@ -1,14 +1,25 @@
-# The xzdec part of upstream's test_files.sh (see tests/tests.cmake). We
-# cannot run the script itself since it requires xz (which is in a separate
-# package) and so we have ported the corresponding checks. Note that this
-# also makes them work on Windows.
+# Upstream's command line tool tests (see tests/tests.cmake). Out of these
+# only test_files.sh exercises xzdec, which it does together with xz. This
+# is a POSIX shell script that upstream only runs on POSIX systems, which we
+# do as well. It takes the directories of xz and xzdec as its arguments and
+# reads its input files relative to the srcdir environment variable.
 #
-# Note also that upstream runs this test only if all the decoders and
-# integrity checks are enabled, which is always the case for the liblzma
-# package.
+# Note that upstream runs this test only if all the decoders and integrity
+# checks are enabled, which is always the case for the liblzma package.
 #
-import xzdec = xzdec%exe{xzdec}
+if ($c.target.class != 'windows')
+{
+  import xz    = xz%exe{xz}
+  import xzdec = xzdec%exe{xzdec}
 
-./: testscript $xzdec files/file{*}
+  ./: testscript $xz $xzdec
 
-testscript{*}: test = $xzdec
+  testscript{*}:
+  {
+    test = $xzdec
+
+    xz = $xz
+  }
+}
+
+./: file{test_files.sh} files/file{*}
