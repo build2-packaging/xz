@@ -8,6 +8,11 @@ using c
 #
 using c.as-cpp
 
+# Windows resource file rule (see w32res.build for details).
+#
+if ($c.target.class == 'windows')
+  source $src_root/build/w32res.build
+
 h{*}: extension = h
 c{*}: extension = c
 

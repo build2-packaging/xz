@@ -252,49 +252,26 @@ if ($symver != [null])
   libs{lzma}: c.loptions += \
     "-Wl,--version-script=$src_base/liblzma/liblzma_$(symver).map"
 
-# Windows resource file.
-#
-# Upstream embeds the version information into the DLL with a resource file.
-# We compile it with the resource compiler that the bin.rc module (loaded by
-# the cc module when targeting Windows) has configured and pass the result
-# to the linker, similar to the version scripts above. Note that the
-# resource file reads the package information from config.h.
+# Windows resource file (see build/w32res.build for details). Note that it
+# reads the package information from config.h.
 #
 ./: liblzma/file{liblzma_w32res.rc} common/file{common_w32res.rc} # Distribute.
 
 if ($c.target.class == 'windows')
 {
-  w32res = ($bin.rc.id == 'gnu' ? w32res.o : w32res.res)
+  libs{lzma}: w32res{lzma}: include = adhoc
+  libs{lzma}: c.loptions += "$out_base/lzma.$w32res_extension"
 
-  libs{lzma}: file{$w32res}: include = adhoc
-  libs{lzma}: c.loptions += "$out_base/$w32res"
-
-  file{$w32res}: liblzma/file{liblzma_w32res.rc}  \
-                 common/file{common_w32res.rc}   \
-                 liblzma/api/lzma/h{version}     \
-                 h{config}
-  {{
-    s = $path($<[0])
-    o = $path($>)
-
-    depdb string $bin.rc.checksum
-
-    diag rc ($<[0]) -> $>
-
-    if ($bin.rc.id == 'gnu')
-    {
-      $bin.rc.path --use-temp-file --input-format=rc --output-format=coff \
-        -DHAVE_CONFIG_H                                                   \
-        "-I$out_pfx" "-I$src_pfx/common" "-I$src_pfx/liblzma/api"         \
-        -o $o $s
-    }
-    else
-    {
-      $bin.rc.path /nologo /DHAVE_CONFIG_H                       \
-        "/I$out_pfx" "/I$src_pfx/common" "/I$src_pfx/liblzma/api" \
-        /fo $o $s
-    }
-  }}
+  w32res{lzma}: liblzma/file{liblzma_w32res.rc} \
+                common/file{common_w32res.rc}  \
+                liblzma/api/lzma/h{version}    \
+                h{config}
+  {
+    w32res.poptions = -DHAVE_CONFIG_H         \
+                      "-I$out_pfx"            \
+                      "-I$src_pfx/common"     \
+                      "-I$src_pfx/liblzma/api"
+  }
 }
 
 # Export options.

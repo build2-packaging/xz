@@ -1,0 +1,52 @@
+# Windows resource file rule.
+#
+# Upstream embeds the version information into its DLL and executables with
+# resource files. We compile them with the resource compiler that the bin.rc
+# module (loaded by the cc module when targeting Windows) has configured and
+# pass the results to the linker.
+#
+# The resource file should be the first prerequisite of the w32res{}
+# target, followed by the files it includes. The preprocessor options (-I
+# and -D only) are specified with the w32res.poptions target-specific
+# variable in the GNU form and are translated for the Microsoft resource
+# compiler as necessary.
+#
+# Note that the output is passed to the linker as an option (the cc link
+# rule doesn't recognize it as an input) and so we also make its extension
+# available as the w32res_extension variable.
+#
+define w32res: file
+
+w32res_extension = ($bin.rc.id == 'gnu' ? o : res)
+
+w32res{*}: extension = $w32res_extension
+
+w32res{~'/.+/'}:
+{{
+  s = $path($<[0]) # Resource file (should come first).
+  o = $path($>)    # Output.
+
+  p = $($>: w32res.poptions) # Preprocessor options.
+
+  depdb string $bin.rc.checksum
+  depdb hash $p
+
+  diag rc ($<[0]) -> $>
+
+  if ($bin.rc.id == 'gnu')
+  {
+    # Note that windres runs the preprocessor through the shell unless
+    # asked to use a temporary file.
+    #
+    $bin.rc.path --use-temp-file --input-format=rc --output-format=coff \
+      $p -o $o $s
+  }
+  else
+  {
+    q =
+    for x: $p
+      q += $regex.replace($x, '^-([ID])', '/\1')
+
+    $bin.rc.path /nologo $q /fo $o $s
+  }
+}}
