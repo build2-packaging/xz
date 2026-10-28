@@ -1,4 +1,6 @@
-./: {*/ -build/} doc{README PACKAGE-README.md NEWS} legal{COPYING} manifest
+./: {*/ -build/}                          \
+    doc{README PACKAGE-README.md NEWS}    \
+    legal{COPYING COPYING.0BSD AUTHORS} manifest
 
 # Don't install tests.
 #
