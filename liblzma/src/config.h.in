@@ -5,6 +5,12 @@
 // (see build/autoconf/checks/ for the project-specific ones).
 //
 
+// Package information that the Windows resource file embeds into the DLL.
+//
+#define PACKAGE_NAME "XZ Utils"
+#define PACKAGE_BUGREPORT "xz@tukaani.org"
+#define PACKAGE_URL "https://tukaani.org/xz/"
+
 // Upstream requires C99 and so these are always available (its CMake build
 // defines them unconditionally as well).
 //
