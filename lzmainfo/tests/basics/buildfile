@@ -1,0 +1,5 @@
+import lzmainfo = lzmainfo%exe{lzmainfo}
+
+./: testscript $lzmainfo file{*.lzma *.xz}
+
+testscript{*}: test = $lzmainfo

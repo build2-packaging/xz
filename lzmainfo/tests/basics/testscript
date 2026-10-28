@@ -1,0 +1,35 @@
+# Basic tests (upstream has none for lzmainfo). The input files come from
+# upstream's test suite.
+#
+
+: version-banner
+:
+$* --version >~'/lzmainfo \(XZ Utils\) [0-9]+\.[0-9]+\.[0-9]+/'
+
+: known-size
+:
+$* <<<$src_base/good-known_size-with_eopm.lzma >>EOO
+Uncompressed size:             0 MB (13 bytes)
+Dictionary size:               0 MB (2^12 bytes)
+Literal context bits (lc):     3
+Literal pos bits (lp):         0
+Number of pos bits (pb):       2
+EOO
+
+: unknown-size
+:
+$* <<<$src_base/good-unknown_size-with_eopm.lzma >>EOO
+Uncompressed size:             Unknown
+Dictionary size:               0 MB (2^12 bytes)
+Literal context bits (lc):     3
+Literal pos bits (lp):         0
+Number of pos bits (pb):       2
+EOO
+
+: xz-input
+:
+: Test that the .xz format is rejected.
+:
+$* <<<$src_base/good-1-check-crc32.xz >- 2>>~/EOE/ != 0
+/.+: \(stdin\): Not a \.lzma file/
+EOE
