@@ -1,9 +1,11 @@
-# xzdec - An executable
+# xzdec - XZ and LZMA data decompression command line utilities
 
-This is a `build2` package for the [`<UPSTREAM-NAME>`](https://<UPSTREAM-URL>)
-executable. It is a <SUMMARY-OF-FUNCTIONALITY>.
-
-Note that the `xzdec` executable in this package provides `build2` metadata.
+This is a `build2` package for the [`xz`](https://tukaani.org/xz/)
+`xzdec` and `lzmadec` executables. These are small decompression-only
+utilities for the `.xz` and the legacy `.lzma` formats, respectively. They
+are intended as drop-in replacements for `xz --decompress --stdout` (and
+`xz --format=lzma --decompress --stdout`) where the size of the full `xz`
+utility matters.
 
 
 ## Usage
@@ -13,13 +15,14 @@ To start using `xzdec` in your project, add the following build-time
 appropriate:
 
 ```
-depends: * xzdec ^<VERSION>
+depends: * xzdec ^5.8.4
 ```
 
-Then import the executable in your `buildfile`:
+Then import the executables in your `buildfile`:
 
 ```
-import! [metadata] <TARGET> = xzdec%exe{<TARGET>}
+import xzdec = xzdec%exe{xzdec}
+import lzmadec = xzdec%exe{lzmadec}
 ```
 
 
@@ -28,18 +31,9 @@ import! [metadata] <TARGET> = xzdec%exe{<TARGET>}
 This package provides the following importable targets:
 
 ```
-exe{<TARGET>}
+exe{xzdec}
+exe{lzmadec}
 ```
 
-<DESCRIPTION-OF-IMPORTABLE-TARGETS>
-
-
-## Configuration variables
-
-This package provides the following configuration variables:
-
-```
-[bool] config.xzdec.<VARIABLE> ?= false
-```
-
-<DESCRIPTION-OF-CONFIG-VARIABLES>
+The `exe{xzdec}` executable decompresses `.xz` files while `exe{lzmadec}`
+decompresses `.lzma` files.
