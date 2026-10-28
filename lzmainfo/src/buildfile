@@ -1,9 +1,114 @@
-libs =
-#import libs += libhello%lib{hello}
+# Upstream builds lzmainfo from src/lzmainfo/lzmainfo.c plus a few tuklib
+# modules from src/common/ (which it shares with liblzma and the other
+# command line tools) and, if the system doesn't provide getopt_long(), the
+# Gnulib replacement from lib/. We symlink these directories and follow
+# upstream's CMakeLists.txt, which is the reference for everything below.
+#
+# Note that we cannot build exe{lzmainfo} in this directory since its output
+# would clash with the lzmainfo/ object directory. So we build it in
+# lzmainfo/ instead.
+#
+import! [metadata, rule_hint=c.link] lib = liblzma%lib{lzma}
 
-exe{lzmainfo}: {h c}{**} $libs testscript
+# Upstream only builds lzmainfo if the decoders are enabled and only
+# installs its man page on POSIX systems.
+#
+if! $empty($($lib: liblzma.decoders))
+{
+  ./: lzmainfo/exe{lzmainfo} probes/
 
+  if ($c.target.class != 'windows')
+    ./: lzmainfo/man1{lzmainfo}
+}
+
+# Enable the system extensions (as upstream's tuklib_use_system_extensions()
+# does) before probing since some checks depend on them.
+#
+if ($c.class != 'msvc')
+  c.poptions += -D_GNU_SOURCE              \
+                -D_NETBSD_SOURCE           \
+                -D_OPENBSD_SOURCE          \
+                -D__EXTENSIONS__           \
+                -D_POSIX_PTHREAD_SEMANTICS \
+                -D_DARWIN_C_SOURCE         \
+                -D_TANDEM_SOURCE           \
+                -D_ALL_SOURCE
+
+include probes/
+
+# Whether to use the getopt_long() replacement. Note that it is only known
+# during perform (see probes/buildfile for details) and elsewhere we keep the
+# replacement as an ad hoc prerequisite so that it is still distributed.
+#
+getopt = ($build.meta_operation == 'perform' && !$(probes/ have_getopt_long))
+
+# Sources.
+#
+lzmainfo/exe{lzmainfo}: lzmainfo/c{lzmainfo} h{config}
+
+lzmainfo/exe{lzmainfo}: common/h{sysdefs               \
+                                 tuklib_common         \
+                                 tuklib_config         \
+                                 tuklib_exit           \
+                                 tuklib_gettext        \
+                                 tuklib_mbstr          \
+                                 tuklib_mbstr_nonprint \
+                                 tuklib_mbstr_wrap     \
+                                 tuklib_progname}
+
+lzmainfo/exe{lzmainfo}: common/c{tuklib_exit           \
+                                 tuklib_mbstr_nonprint \
+                                 tuklib_mbstr_width    \
+                                 tuklib_mbstr_wrap     \
+                                 tuklib_progname}
+
+lzmainfo/exe{lzmainfo}: lib/c{getopt getopt1}                            \
+                        lib/h{getopt getopt_int getopt-cdefs getopt-core \
+                              getopt-ext getopt-pfx-core getopt-pfx-ext}: \
+  include = ($getopt ? true : adhoc)
+
+# Note that the library must come last for linkers that resolve symbols from
+# archives (such as import libraries) in the command line order.
+#
+lzmainfo/exe{lzmainfo}: $lib
+
+# The getopt_long() replacement header. Upstream copies it as is (and so do
+# we).
+#
+lib/h{getopt}: lib/in{getopt.in.h}
+
+# Configuration header.
+#
+using autoconf
+
+h{config}: in{config}
+
+# The probe results are only available during perform (see probes/buildfile
+# for details).
+#
+if ($build.meta_operation == 'perform')
+{
+  h{config}:
+  {
+    HAVE_PROGRAM_INVOCATION_NAME = $(probes/ have_program_invocation_name)
+
+    HAVE_MBRTOWC   = $(probes/ have_mbrtowc)
+    HAVE_WCWIDTH   = $(probes/ have_wcwidth)
+    HAVE_VASPRINTF = $(probes/ have_vasprintf)
+  }
+}
+
+# Build options.
+#
 out_pfx = [dir_path] $out_root/src/
 src_pfx = [dir_path] $src_root/src/
 
-c.poptions =+ "-I$out_pfx" "-I$src_pfx"
+c.poptions =+ "-I$out_pfx" "-I$src_pfx/common"
+
+if $getopt
+  c.poptions =+ "-I$out_pfx/lib" "-I$src_pfx/lib"
+
+c.poptions += -DHAVE_CONFIG_H
+
+if $getopt
+  c.poptions += -D__GETOPT_PREFIX=rpl_
