@@ -1,0 +1,8 @@
+# Test executables.
+#
+create_compress_files
+
+# Testscript output directories (can be symlinks).
+#
+test
+test-*

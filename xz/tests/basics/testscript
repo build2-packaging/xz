@@ -1,0 +1,38 @@
+# Basic tests that, unlike upstream's (see ../xz/), also run on Windows.
+#
+
+: version-banner
+:
+$* --version >>~/EOO/
+/xz \(XZ Utils\) [0-9]+\.[0-9]+\.[0-9]+/
+/liblzma [0-9]+\.[0-9]+\.[0-9]+/
+EOO
+
+: compress-roundtrip
+:
+{{
+  : xz
+  :
+  $* -c <'Hello, World!' | $* -dc >'Hello, World!'
+
+  : lzma
+  :
+  $* -c --format=lzma <'Hello, World!' | $* -dc >'Hello, World!'
+
+  : threads
+  :
+  $* -c -T2 <'Hello, World!' | $* -dc >'Hello, World!'
+}}
+
+: integrity-test
+:
+$* -c <'Hello, World!' >=f.xz;
+$* -t f.xz
+
+: corrupt-input
+:
+: Test that input that is not compressed is detected.
+:
+$* -dc <'Hello, World!' 2>>~/EOE/ != 0
+/.+: \(stdin\): File format not recognized/
+EOE

@@ -1,0 +1,5 @@
+import xz = xz%exe{xz}
+
+./: testscript $xz
+
+testscript{*}: test = $xz
