@@ -112,3 +112,33 @@ c.poptions += -DHAVE_CONFIG_H
 
 if $getopt
   c.poptions += -D__GETOPT_PREFIX=rpl_
+
+# Windows resource file (see build/w32res.build for details).
+#
+# Note that for executables upstream's resource file also embeds an
+# application manifest that conflicts with the one embedded by the cc link
+# rule. So we omit it the same way upstream does for Cygwin. This, however,
+# means that lzmainfo doesn't get upstream's UTF-8 active code page and long
+# path awareness settings.
+#
+# Note also that the resource file reads the package information from
+# config.h and the version from the library's lzma/version.h.
+#
+./: lzmainfo/file{lzmainfo_w32res.rc} \
+    common/file{common_w32res.rc} # Distribute.
+
+if ($c.target.class == 'windows')
+{
+  lzmainfo/exe{lzmainfo}: lzmainfo/w32res{lzmainfo}: include = adhoc
+  lzmainfo/exe{lzmainfo}: c.loptions += \
+    "$out_base/lzmainfo/lzmainfo.$w32res_extension"
+
+  lzmainfo/w32res{lzmainfo}: lzmainfo/file{lzmainfo_w32res.rc} \
+                             common/file{common_w32res.rc}     \
+                             h{config}
+  {
+    w32res.poptions = -D__CYGWIN__ -DHAVE_CONFIG_H "-I$out_pfx" \
+                      "-I$src_pfx/common"                       \
+                      $regex.filter_match($($lib: c.export.poptions), '-I.+')
+  }
+}
