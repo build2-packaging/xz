@@ -16,8 +16,9 @@ source $src_root/build/probe.build
 
 # Headers.
 #
-# The header name is derived from the target name (for example, cpuid.h for
-# have-cpuid-h) and so we specify the ones in subdirectories explicitly.
+# The header name is derived from the target name (for example, byteswap.h
+# for have-byteswap-h) and so we specify the ones in subdirectories
+# explicitly.
 #
 buildfile{have-sys-param-h}:     header_name = sys/param.h
 buildfile{have-sys-endian-h}:    header_name = sys/endian.h
@@ -25,7 +26,7 @@ buildfile{have-sys-byteorder-h}: header_name = sys/byteorder.h
 
 probes =
 
-for h: byteswap cpuid immintrin sys-param sys-endian sys-byteorder
+for h: byteswap sys-param sys-endian sys-byteorder
 {
   buildfile{have-$h-h}:
   probes += buildfile{have-$h-h}
@@ -45,7 +46,9 @@ for h: byteswap cpuid immintrin sys-param sys-endian sys-byteorder
 #    perform_execute() if this project is imported from a buildfile that is
 #    loaded as a directory prerequisite.
 #
-for p: clock-gettime              \
+for p: cpuid                      \
+       immintrin                  \
+       clock-gettime              \
        clock-monotonic            \
        pthread-condattr-setclock  \
        builtin-bswapxx            \

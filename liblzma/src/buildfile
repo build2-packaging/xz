@@ -158,9 +158,9 @@ if ($build.meta_operation == 'perform')
     HAVE_FUNC_ATTRIBUTE_CONSTRUCTOR = \
       $(probes/ have_func_attribute_constructor)
 
-    immintrin = $(probes/ have_immintrin_h)
+    immintrin = $(probes/ have_immintrin)
 
-    HAVE_CPUID_H           = $(probes/ have_cpuid_h)
+    HAVE_CPUID_H           = $(probes/ have_cpuid)
     HAVE_IMMINTRIN_H       = $immintrin
     HAVE__MM_MOVEMASK_EPI8 = ($immintrin && $(probes/ have_mm_movemask_epi8))
     HAVE_USABLE_CLMUL      = ($immintrin && $(probes/ have_usable_clmul))
