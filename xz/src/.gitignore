@@ -1,0 +1,5 @@
+xz
+
+# Testscript output directory (can be symlink).
+#
+test-xz
