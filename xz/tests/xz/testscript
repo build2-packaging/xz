@@ -23,9 +23,10 @@ sh $src_base/test_suffix.sh $bin >-
 
 : scripts-diff-grep
 :
-: Test xzdiff and xzgrep.
+: Test xzdiff and xzgrep. Note that the script adds the directory to PATH
+: relative to its working directory.
 :
-env "srcdir=$src_base" -- sh $src_base/test_scripts.sh $bin >- \
+env "srcdir=$src_base" -- sh $src_base/test_scripts.sh ../bin >- \
   &xzgrep_test_1.xz &xzgrep_test_2.xz &xzgrep_test_output
 
 : compress-generated
