@@ -1,0 +1,28 @@
+# Note that the diagnostics are discarded below since they vary from file to
+# file.
+#
+
+: good-files
+:
+: Test that the good files are decompressed successfully.
+:
+for f: $path_search("$src_base/files/good-*.xz")
+{
+  $* $f >-
+}
+
+: bad-files
+:
+: Test that the bad files are rejected.
+:
+for f: $path_search("$src_base/files/bad-*.xz")
+{
+  $* $f >- 2>- != 0
+}
+
+: unsupported-check
+:
+: Test that a file with an unsupported integrity check is decompressed with
+: the warnings disabled.
+:
+$* -qQ $src_base/files/unsupported-check.xz >-

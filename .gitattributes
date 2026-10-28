@@ -30,3 +30,4 @@ xz/tests/xz/files symlink=dir
 xzdec/src/common symlink=dir
 xzdec/src/lib symlink=dir
 xzdec/src/xzdec symlink=dir
+xzdec/tests/xzdec/files symlink=dir
