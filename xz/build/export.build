@@ -6,8 +6,7 @@ $out_root/
 # Note that the executables are built in the xz/ subdirectory and the
 # scripts in scripts/ (see src/buildfile for details).
 #
-d = ($regex.match($name($import.target), '[xl]z(diff|cmp|[ef]?grep|more|less)') \
-     ? scripts                                                                  \
-     : xz)
+n = $name($import.target)
+d = ($regex.match($n, '[xl]z(diff|cmp|[ef]?grep|more|less)') ? scripts : xz)
 
 export $out_root/src/$d/$import.target
