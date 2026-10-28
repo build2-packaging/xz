@@ -1,0 +1,68 @@
+// The liblzma configuration header. Upstream produces it with Autotools or
+// passes the equivalent macros on the command line with CMake. We generate
+// it with the autoconf module: the results of the probes in probes/ are
+// substituted by the buildfile while the rest are expectation-based checks
+// (see build/autoconf/checks/ for the project-specific ones).
+//
+
+// Upstream requires C99 and so these are always available (its CMake build
+// defines them unconditionally as well).
+//
+#define HAVE_STDBOOL_H 1
+#define HAVE__BOOL 1
+#define HAVE_STDINT_H 1
+#define HAVE_INTTYPES_H 1
+
+// Byte order and unaligned access (tuklib_integer.h).
+//
+#undef WORDS_BIGENDIAN
+#undef TUKLIB_FAST_UNALIGNED_ACCESS
+
+#undef HAVE___BUILTIN_BSWAPXX
+#undef HAVE_BYTESWAP_H
+#undef HAVE_BSWAP_16
+#undef HAVE_BSWAP_32
+#undef HAVE_BSWAP_64
+#undef HAVE_SYS_ENDIAN_H
+#undef HAVE_SYS_BYTEORDER_H
+#undef HAVE___BUILTIN_ASSUME_ALIGNED
+
+// Time and threading (mythread.h).
+//
+#undef HAVE_CLOCK_GETTIME
+#undef HAVE_CLOCK_MONOTONIC
+#undef HAVE_PTHREAD_CONDATTR_SETCLOCK
+
+// Number of processor cores (tuklib_cpucores.c) and amount of physical
+// memory (tuklib_physmem.c). Each source file uses the first available
+// method in upstream's order of preference.
+//
+#undef HAVE_SYS_PARAM_H
+
+#undef TUKLIB_CPUCORES_SCHED_GETAFFINITY
+#undef TUKLIB_CPUCORES_CPUSET
+#undef TUKLIB_CPUCORES_SYSCTL
+#undef TUKLIB_CPUCORES_SYSCONF
+#undef TUKLIB_CPUCORES_PSTAT_GETDYNAMIC
+
+#undef TUKLIB_PHYSMEM_AIX
+#undef TUKLIB_PHYSMEM_SYSCONF
+#undef TUKLIB_PHYSMEM_SYSCTL
+#undef TUKLIB_PHYSMEM_PSTAT_GETSTATIC
+
+// CRC acceleration with runtime processor detection (check/).
+//
+#undef HAVE_FUNC_ATTRIBUTE_CONSTRUCTOR
+
+#undef HAVE_CPUID_H
+#undef HAVE_IMMINTRIN_H
+#undef HAVE__MM_MOVEMASK_EPI8
+#undef HAVE_USABLE_CLMUL
+
+#undef HAVE_ARM64_CRC32
+#undef HAVE_GETAUXVAL
+#undef HAVE_HWCAP_CRC32
+#undef HAVE_ELF_AUX_INFO
+#undef HAVE_SYSCTLBYNAME
+
+#undef HAVE_LOONGARCH_CRC32

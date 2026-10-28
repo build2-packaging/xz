@@ -1,0 +1,353 @@
+# Configuration probes.
+#
+# Upstream discovers what the compiler and the C library provide by
+# compiling test programs (see CMakeLists.txt and cmake/tuklib_*.cmake). We
+# do the same, translating each upstream check into a probe that is compiled
+# during load together with a control variant (see the "How do I implement
+# autoconf-style configuration probing?" build2 HOWTO for background). The
+# results are made available as have_* variables in this scope and are
+# substituted into config.h by the parent buildfile.
+#
+# The probe rules below are copied from the build2 autoprobe example
+# (https://github.com/build2/autoprobe, MIT license) without the C++ variant.
+#
+
+# C probe rule.
+#
+buildfile{~'/have-(.*)/'}: c{~'/have-\1/'}
+%
+if ($c.class == 'gcc') # GCC and Clang.
+{{
+  s = $path($<[0]) # Probe source (should come first).
+  o = $path($>)    # Output.
+  t = $(o).t       # Temporary file.
+
+  depdb string $c.checksum
+  depdb env CPATH C_INCLUDE_PATH COMPILER_PATH
+  depdb env ($c.id.type == 'gcc' ? GCC_EXEC_PREFIX : \
+             $c.id.type == 'clang' ? CCC_OVERRIDE_OPTIONS : )
+
+  # Extract header dependency information from the temporary file that
+  # will be generated as a byproduct of control compilation.
+  #
+  depdb dyndep --byproduct --what=header --default-type=h --file $t
+
+  n = $replace($name($>), 'have-', '', first_only)
+  v = "have_$regex.replace($n, '[-.+]', '_')" # Sanitize to variable name.
+
+  diag check "for $n" -> $>
+
+  # First evaluate dependency buildfiles, if any, and short-circuit
+  # compilation if any of them are false.
+  #
+  for b: $filter($<, buildfile)
+  {
+    sed -n -e 's/^have_[^ ]+ = (true|false)$/\1/p' $path($b) | set r
+
+    if ($r == 'false')
+    {
+      # Write dummy header dependency in make format, escaping special
+      # characters.
+      #
+      echo "dummy.o: $regex.replace($s , '([ :\\])', '\\\1')" >$t
+      echo "$v = false" >$o
+      exit 0
+    }
+    elif ($r != 'true')
+      exit 1 "invalid variable assignment format in $path($b)"
+  }
+
+  # Note that we need to filter out user options that may interfere with what
+  # we are trying to achieve below. Specifically, -w|--no-warning disables
+  # warnings without the possibility of being re-enabled. Also filter out -std
+  # to enable C99.
+  #
+  options = $c.poptions $cc.poptions
+  options += $regex.filter_out_match($cc.coptions $c.coptions $c.mode,\
+                                     '(-w|--no-warning|-std=.+)')
+
+  # Add extra system header search directories, if any.
+  #
+  # Note that sys_hdr_dirs_{extra,mode} are only available since build2 0.19.
+  #
+  if ($build.version.major > 0 || $build.version.minor > 18)
+  {
+    hdr_m = $c.sys_hdr_dirs_mode
+    hdr_e = $hdr_m
+    hdr_e += $c.sys_hdr_dirs_extra
+
+    for i: $integer_sequence($hdr_m, $hdr_e)
+      options += -isystem ($c.sys_hdr_dirs[$i])
+  }
+
+  # Turn certain warnings into errors to detect missing functions, etc., in C.
+  # At a minimum we would want -Werror=implicit-function-declaration but
+  # --pedantic-errors with -std=c99 covers few more that will detect certain
+  # function signature incompatibilities. Except in older Clang.
+  #
+  options += -std=c9x --pedantic-errors -fsyntax-only
+  options += ($c.id.type == 'clang' ? -Werror=implicit-function-declaration : )
+  options += -finput-charset=UTF-8 -x c
+
+  if ($c.stdlib == 'musl')
+    options += -D__MUSL__
+
+  if ($c.target.system == 'win32-msvc')
+    options += -D_MT -D_DLL # /MD
+
+  # First compile control, saving the header dependency information into the
+  # temporary file.
+  #
+  $c.path -DCONTROL $options -MD -MF $t $s
+
+  # Then compile the probe discarding any diagnostics.
+  #
+  if $c.path $options $s 2>-
+    r = true
+  else
+    r = false
+
+  echo "$v = $r" >$o
+}}
+elif ($c.class == 'msvc')
+{{
+  s = $path($<[0]) # Probe source (should come first).
+  o = $path($>)    # Output.
+  t = $(o).t       # Temporary file.
+
+  env_include = $getenv('INCLUDE')
+
+  # Track changes in compiler and environment variables that affect
+  # compilation.
+  #
+  depdb string $c.checksum
+  depdb env CL _CL_
+  depdb hash $env_include
+
+  # Extract header dependency information from the temporary file that
+  # will be generated as a byproduct of control compilation.
+  #
+  depdb dyndep --byproduct --format=lines --what=header --default-type=h --file $t
+
+  n = $replace($name($>), 'have-', '', first_only)
+  v = "have_$regex.replace($n, '[-.+]', '_')" # Sanitize to variable name.
+
+  diag check "for $n" -> $>
+
+  # First evaluate dependency buildfiles, if any, and short-circuit
+  # compilation if any of them are false.
+  #
+  for b: $filter($<, buildfile)
+  {
+    sed -n -e 's/^have_[^ ]+ = (true|false)$/\1/p' $path($b) | set r
+
+    if ($r == 'false')
+    {
+      # Write empty header dependency in the lines format.
+      #
+      cat <<<=:'' >$t
+      echo "$v = false" >$o
+      exit 0
+    }
+    elif ($r != 'true')
+      exit 1 "invalid variable assignment format in $path($b)"
+  }
+
+  options = $c.poptions $cc.poptions
+  options += $cc.coptions $c.coptions $c.mode
+
+  # Add extra system header search directories, if any. Also add normal system
+  # header search directories if there is no INCLUDE environment variable.
+  # Note that we don't bother with /external:I since it doesn't affect the
+  # order. See cc::compile_rule::append_sys_hdr_options() in build2 for
+  # details.
+  #
+  # Note that sys_hdr_dirs_{extra,mode} are only available since build2 0.19.
+  #
+  if ($build.version.major > 0 || $build.version.minor > 18)
+  {
+    hdr_m = $c.sys_hdr_dirs_mode
+    hdr_e = $hdr_m
+    hdr_e += $c.sys_hdr_dirs_extra
+
+    for i: $integer_sequence($hdr_m, $hdr_e)
+      options += /I ($c.sys_hdr_dirs[$i])
+
+    ifn $env_include
+    {
+      for i: $integer_sequence($hdr_e, $size($c.sys_hdr_dirs))
+        options += /I ($c.sys_hdr_dirs[$i])
+    }
+  }
+  else
+  {
+    # Add them all (the best we can do).
+    #
+    ifn $env_include
+    {
+      for d: $c.sys_hdr_dirs
+        options += /I $d
+    }
+  }
+
+  # Note that /weXXXX appears to enable the warning (as error) even if either
+  # all the warnings were previously disabled with /w or this specific warning
+  # was disabled with /wdXXXX.
+  #
+  # C4013 -- undefined function
+  # C4020 -- too many actual parameters
+  # C2198 -- too few arguments for call (error)
+  # C4024 -- different types for formal and actual parameter
+  # C4133 -- incompatible types in initialization
+  # C4047 -- differs in levels of indirection
+  #
+  options += /nologo /utf-8 /TC /Zs
+  options += /we4013 /we4020 /we4024 /we4133 /we4047
+
+  # Unless there is a custom /MD* or /MT*, add /MD.
+  #
+  if! $regex.find_match($options, '[/-]M[DT].*')
+    options += /MD
+
+  # First compile control, saving the header dependency information into the
+  # temporary file.
+  #
+  # We also have to filter the translation unit name that is always printed by
+  # MSVC. Note that MSVC sends its diagnostics to stdout, not stderr.
+  #
+  $c.path /DCONTROL $options /sourceDependencies $t $s 2>&1 | \
+    sed -n -e "s%^\(?!$leaf($s)\$\).*%\$&%p" 1>&2
+
+  # Then compile the probe discarding any diagnostics.
+  #
+  if $c.path $options $s 1>- 2>&1
+    r = true
+  else
+    r = false
+
+  echo "$v = $r" >$o
+
+  # Translate the /sourceDependencies JSON format to the list of headers
+  # expected by dyndep depdb --format=lines above.
+  #
+  # While there are several version of this format (1.0, 1.1, and 1.2), they
+  # all have Includes inside Data. And we ignore the rest (modules, PCH, etc).
+  #
+  set d [json_object] <$t
+
+  if ($build.version.major > 0 || $build.version.minor > 18)
+  {
+    echo $merge([strings] $d[Data][Includes], $\n) >$t
+  }
+  else
+  {
+    true >$t # Truncate.
+    for h: ($d[Data][Includes])
+      echo "$h" >>$t
+  }
+}}
+
+# System header presence probe rule.
+#
+# Note: it only makes sense to go through a generated buildfile if you need to
+# use it as a dependency. Otherwise, just call the find_system_header()
+# directly.
+#
+# The header name can be specified with the header_name target-specific
+# variable, for example:
+#
+# buildfile{have-sys-types-h}: header_name = sys/types.h
+#
+buildfile{~'/have-(.*)-h/'}:
+{{
+  o = $path($>) # Output.
+  n = $replace($name($>), 'have-', '', first_only)
+  v = "have_$regex.replace($n, '[-.+]', '_')" # Sanitize to variable name.
+  h = ($($>: header_name) == [null] \
+       ? $replace($n, '-h', '.h', last_only) \
+       : $($>: header_name))
+  r = $c.find_system_header($h)
+
+  depdb string $r
+
+  diag check "for $h" -> $>
+
+  # Evaluate dependency buildfiles, if any. Note that we cannot really
+  # short-circuit the above call to find_system_header() because it has
+  # to be called in the depdb preamble, which is executed during match.
+  #
+  for b: $filter($<, buildfile)
+  {
+    sed -n -e 's/^have_[^ ]+ = (true|false)$/\1/p' $path($b) | set r
+
+    if ($r == 'false')
+    {
+      echo "$v = false" >$o
+      exit 0
+    }
+    elif ($r != 'true')
+      exit 1 "invalid variable assignment format in $path($b)"
+  }
+
+  echo "$v = ($r != [null])" >$o
+}}
+
+# Headers.
+#
+# The header name is derived from the target name (for example, cpuid.h for
+# have-cpuid-h) and so we specify the ones in subdirectories explicitly.
+#
+buildfile{have-sys-param-h}:     header_name = sys/param.h
+buildfile{have-sys-endian-h}:    header_name = sys/endian.h
+buildfile{have-sys-byteorder-h}: header_name = sys/byteorder.h
+
+probes =
+
+for h: byteswap cpuid immintrin sys-param sys-endian sys-byteorder
+{
+  buildfile{have-$h-h}:
+  probes += buildfile{have-$h-h}
+}
+
+# C probes.
+#
+# Note that the rule expects the probe source to be the first prerequisite.
+#
+for p: clock-gettime                     clock-monotonic                   pthread-condattr-setclock         builtin-bswapxx                   bswap-16                          bswap-32                          bswap-64                          builtin-assume-aligned            cpucores-sched-getaffinity        cpucores-cpuset                   cpucores-sysctl                   cpucores-sysconf                  cpucores-pstat-getdynamic         physmem-aix                       physmem-sysconf                   physmem-sysctl                    physmem-pstat-getstatic           func-attribute-constructor        mm-movemask-epi8                  usable-clmul                      arm64-crc32                       getauxval                         hwcap-crc32                       elf-aux-info                      sysctlbyname                      loongarch-crc32
+{
+  buildfile{have-$p}: c{have-$p}
+  probes += buildfile{have-$p}
+}
+
+# Probes that only make sense (or only compile) if another result is true.
+# Upstream performs most of these checks conditionally as well.
+#
+buildfile{have-clock-monotonic}:           buildfile{have-clock-gettime}
+buildfile{have-pthread-condattr-setclock}: buildfile{have-clock-monotonic}
+
+buildfile{have-bswap-16 have-bswap-32 have-bswap-64}: buildfile{have-byteswap-h}
+
+buildfile{have-mm-movemask-epi8 have-usable-clmul}: buildfile{have-immintrin-h}
+
+buildfile{have-getauxval have-elf-aux-info have-sysctlbyname}: \
+  buildfile{have-arm64-crc32}
+
+buildfile{have-hwcap-crc32}: buildfile{have-getauxval}
+
+# Compilers that don't support an attribute may only warn about it.
+#
+if ($c.class == 'gcc')
+  buildfile{have-func-attribute-constructor}: c.coptions += -Werror
+
+./: $probes # Make sure gets cleaned.
+
+# We only need the results to generate config.h and so we limit probing to
+# the perform meta-operation (for example, to avoid surprising compilations
+# during configure). Elsewhere the results stay undefined since config.h is
+# not generated.
+#
+if ($build.meta_operation == 'perform')
+{
+  update $probes
+  source $path($probes)
+}
