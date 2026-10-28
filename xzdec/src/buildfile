@@ -12,16 +12,15 @@ import! [metadata, rule_hint=c.link] lib = liblzma%lib{lzma}
 
 # Upstream only builds these tools if the decoders are enabled.
 #
-if! $empty($($lib: liblzma.decoders))
-{
-  ./: xzdec/exe{xzdec lzmadec} probes/
+# Upstream also only installs the man page (which covers both tools) on
+# POSIX systems.
+#
+decoders = (!$empty($($lib: liblzma.decoders)))
 
-  # Upstream only installs the man page (which covers both tools) on POSIX
-  # systems.
-  #
-  if ($c.target.class != 'windows')
-    ./: xzdec/man1{xzdec lzmadec}
-}
+./: xzdec/exe{xzdec lzmadec}: include = $decoders
+./: xzdec/man1{xzdec lzmadec}: include = ($decoders && \
+                                           $c.target.class != 'windows')
+./: probes/
 
 # Enable the system extensions (as upstream's tuklib_use_system_extensions()
 # does) before probing since some checks depend on them.
@@ -148,21 +147,22 @@ if $getopt
 ./: xzdec/file{xzdec_w32res.rc lzmadec_w32res.rc} \
     common/file{common_w32res.rc} # Distribute.
 
-if ($c.target.class == 'windows')
-{
-  for e: xzdec lzmadec
-  {
-    xzdec/exe{$e}: xzdec/w32res{$e}: include = adhoc
-    xzdec/exe{$e}: c.loptions += "$out_base/xzdec/$e.$w32res_extension"
+w32res = ($c.target.class == 'windows')
 
-    xzdec/w32res{$e}: xzdec/file{$(e)_w32res.rc} common/file{common_w32res.rc} \
-                      h{config}
-    {
-      w32res.poptions = -D__CYGWIN__ -DHAVE_CONFIG_H "-I$out_pfx" \
-                        "-I$src_pfx/common"                       \
-                        $regex.filter_match($($lib: c.export.poptions), '-I.+')
-    }
+for e: xzdec lzmadec
+{
+  xzdec/exe{$e}: xzdec/w32res{$e}: include = ($w32res ? adhoc : false)
+
+  xzdec/w32res{$e}: xzdec/file{$(e)_w32res.rc} common/file{common_w32res.rc} \
+                    h{config}
+  {
+    w32res.poptions = -D__CYGWIN__ -DHAVE_CONFIG_H "-I$out_pfx" \
+                      "-I$src_pfx/common"                       \
+                      $regex.filter_match($($lib: c.export.poptions), '-I.+')
   }
+
+  if $w32res
+    xzdec/exe{$e}: c.loptions += "$out_base/xzdec/$e.$w32res_extension"
 }
 
 # Note that this must come after the above options since it appends to

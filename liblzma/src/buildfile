@@ -257,22 +257,23 @@ if ($symver != [null])
 #
 ./: liblzma/file{liblzma_w32res.rc} common/file{common_w32res.rc} # Distribute.
 
-if ($c.target.class == 'windows')
-{
-  libs{lzma}: w32res{lzma}: include = adhoc
-  libs{lzma}: c.loptions += "$out_base/lzma.$w32res_extension"
+w32res = ($c.target.class == 'windows')
 
-  w32res{lzma}: liblzma/file{liblzma_w32res.rc} \
-                common/file{common_w32res.rc}  \
-                liblzma/api/lzma/h{version}    \
-                h{config}
-  {
-    w32res.poptions = -DHAVE_CONFIG_H         \
-                      "-I$out_pfx"            \
-                      "-I$src_pfx/common"     \
-                      "-I$src_pfx/liblzma/api"
-  }
+libs{lzma}: w32res{lzma}: include = ($w32res ? adhoc : false)
+
+w32res{lzma}: liblzma/file{liblzma_w32res.rc} \
+              common/file{common_w32res.rc}  \
+              liblzma/api/lzma/h{version}    \
+              h{config}
+{
+  w32res.poptions = -DHAVE_CONFIG_H         \
+                    "-I$out_pfx"            \
+                    "-I$src_pfx/common"     \
+                    "-I$src_pfx/liblzma/api"
 }
+
+if $w32res
+  libs{lzma}: c.loptions += "$out_base/lzma.$w32res_extension"
 
 # Export options.
 #

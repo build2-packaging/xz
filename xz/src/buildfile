@@ -116,19 +116,15 @@ for a: $aliases
 # operation mode based on the program name, similar to xz) on POSIX systems
 # and only if the decoders are enabled.
 #
-scripts        =
-script_aliases =
+scripts = xzdiff xzgrep xzmore xzless
 
-if ($c.target.class != 'windows' && !$empty($decoders))
-{
-  scripts = xzdiff xzgrep xzmore xzless
+script_aliases = xzcmp@xzdiff   lzdiff@xzdiff  lzcmp@xzdiff  \
+                 xzegrep@xzgrep xzfgrep@xzgrep lzgrep@xzgrep \
+                 lzegrep@xzgrep lzfgrep@xzgrep               \
+                 lzmore@xzmore                               \
+                 lzless@xzless
 
-  script_aliases = xzcmp@xzdiff   lzdiff@xzdiff  lzcmp@xzdiff   \
-                   xzegrep@xzgrep xzfgrep@xzgrep lzgrep@xzgrep  \
-                   lzegrep@xzgrep lzfgrep@xzgrep                \
-                   lzmore@xzmore                                \
-                   lzless@xzless
-}
+posix_scripts = ($c.target.class != 'windows' && !$empty($decoders))
 
 using in
 
@@ -137,7 +133,7 @@ using in
 #
 for n: $scripts
 {
-  ./: scripts/exe{$n} scripts/man1{$n}
+  ./: scripts/exe{$n} scripts/man1{$n}: include = $posix_scripts
 
   [rule_hint=in] scripts/exe{$n}: scripts/in{$n}
 }
@@ -147,7 +143,7 @@ for p: $script_aliases
   a = $first($p)
   n = $second($p)
 
-  ./: scripts/exe{$a} scripts/man1{$a}
+  ./: scripts/exe{$a} scripts/man1{$a}: include = $posix_scripts
 
   [rule_hint=in] scripts/exe{$a}: scripts/in{$n}
 
@@ -329,19 +325,19 @@ if ($threads == 'posix')
 #
 ./: xz/file{xz_w32res.rc} common/file{common_w32res.rc} # Distribute.
 
-if ($c.target.class == 'windows')
-{
-  xz/exe{xz}: xz/w32res{xz}: include = adhoc
-  xz/exe{xz}: c.loptions += "$out_base/xz/xz.$w32res_extension"
+w32res = ($c.target.class == 'windows')
 
-  xz/w32res{xz}: xz/file{xz_w32res.rc} common/file{common_w32res.rc} \
-                 h{config}
-  {
-    w32res.poptions = -D__CYGWIN__ -DHAVE_CONFIG_H "-I$out_pfx" \
-                      "-I$src_pfx/common"                       \
-                      $regex.filter_match($($lib: c.export.poptions), '-I.+')
-  }
+xz/exe{xz}: xz/w32res{xz}: include = ($w32res ? adhoc : false)
+
+xz/w32res{xz}: xz/file{xz_w32res.rc} common/file{common_w32res.rc} h{config}
+{
+  w32res.poptions = -D__CYGWIN__ -DHAVE_CONFIG_H "-I$out_pfx" \
+                    "-I$src_pfx/common"                       \
+                    $regex.filter_match($($lib: c.export.poptions), '-I.+')
 }
+
+if $w32res
+  xz/exe{xz}: c.loptions += "$out_base/xz/xz.$w32res_extension"
 
 # Installation.
 #

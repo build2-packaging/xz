@@ -15,8 +15,6 @@ if $posix
   import xzdiff = xz%exe{xzdiff}
   import xzgrep = xz%exe{xzgrep}
 
-  ./: testscript $xz $xzdiff $xzgrep exe{create_compress_files}
-
   testscript{*}:
   {
     test = $xz
@@ -25,6 +23,7 @@ if $posix
   }
 }
 
+./: testscript $xz $xzdiff $xzgrep exe{create_compress_files}: include = $posix
 ./: file{test_*.sh xzgrep_expected_output} files/file{*}
 
 # The program that generates the test_compress.sh input files.

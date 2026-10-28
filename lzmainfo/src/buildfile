@@ -13,13 +13,12 @@ import! [metadata, rule_hint=c.link] lib = liblzma%lib{lzma}
 # Upstream only builds lzmainfo if the decoders are enabled and only
 # installs its man page on POSIX systems.
 #
-if! $empty($($lib: liblzma.decoders))
-{
-  ./: lzmainfo/exe{lzmainfo} probes/
+decoders = (!$empty($($lib: liblzma.decoders)))
 
-  if ($c.target.class != 'windows')
-    ./: lzmainfo/man1{lzmainfo}
-}
+./: lzmainfo/exe{lzmainfo}: include = $decoders
+./: lzmainfo/man1{lzmainfo}: include = ($decoders && \
+                                         $c.target.class != 'windows')
+./: probes/
 
 # Enable the system extensions (as upstream's tuklib_use_system_extensions()
 # does) before probing since some checks depend on them.
@@ -127,18 +126,20 @@ if $getopt
 ./: lzmainfo/file{lzmainfo_w32res.rc} \
     common/file{common_w32res.rc} # Distribute.
 
-if ($c.target.class == 'windows')
+w32res = ($c.target.class == 'windows')
+
+lzmainfo/exe{lzmainfo}: lzmainfo/w32res{lzmainfo}: \
+  include = ($w32res ? adhoc : false)
+
+lzmainfo/w32res{lzmainfo}: lzmainfo/file{lzmainfo_w32res.rc} \
+                           common/file{common_w32res.rc}     \
+                           h{config}
 {
-  lzmainfo/exe{lzmainfo}: lzmainfo/w32res{lzmainfo}: include = adhoc
+  w32res.poptions = -D__CYGWIN__ -DHAVE_CONFIG_H "-I$out_pfx" \
+                    "-I$src_pfx/common"                       \
+                    $regex.filter_match($($lib: c.export.poptions), '-I.+')
+}
+
+if $w32res
   lzmainfo/exe{lzmainfo}: c.loptions += \
     "$out_base/lzmainfo/lzmainfo.$w32res_extension"
-
-  lzmainfo/w32res{lzmainfo}: lzmainfo/file{lzmainfo_w32res.rc} \
-                             common/file{common_w32res.rc}     \
-                             h{config}
-  {
-    w32res.poptions = -D__CYGWIN__ -DHAVE_CONFIG_H "-I$out_pfx" \
-                      "-I$src_pfx/common"                       \
-                      $regex.filter_match($($lib: c.export.poptions), '-I.+')
-  }
-}

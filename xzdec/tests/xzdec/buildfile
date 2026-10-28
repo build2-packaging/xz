@@ -7,12 +7,12 @@
 # Note that upstream runs this test only if all the decoders and integrity
 # checks are enabled, which is always the case for the liblzma package.
 #
-if ($c.target.class != 'windows')
+posix = ($c.target.class != 'windows')
+
+if $posix
 {
   import xz    = xz%exe{xz}
   import xzdec = xzdec%exe{xzdec}
-
-  ./: testscript $xz $xzdec
 
   testscript{*}:
   {
@@ -22,4 +22,5 @@ if ($c.target.class != 'windows')
   }
 }
 
+./: testscript $xz $xzdec: include = $posix
 ./: file{test_files.sh} files/file{*}
