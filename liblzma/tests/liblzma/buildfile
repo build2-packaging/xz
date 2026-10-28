@@ -1,0 +1,82 @@
+# Upstream's liblzma tests (see tests/tests.cmake). Each test_*.c is a
+# separate program that only calls the public API but includes a few private
+# headers (sysdefs.h, tuklib_integer.h, etc) and relies on the same macros as
+# the library to determine which features to test. We get these from the
+# library metadata so that the tests match the library being tested, which
+# may also be installed.
+#
+import! [metadata, rule_hint=c.link] lib = liblzma%lib{lzma}
+
+encoders = $($lib: liblzma.encoders)
+decoders = $($lib: liblzma.decoders)
+checks   = $($lib: liblzma.checks)
+threads  = $($lib: liblzma.threads)
+
+# The MicroLZMA test needs the encoder for both the encoder and decoder test
+# cases. It also doesn't support the MicroLZMA decoder being disabled while
+# the LZMA1 decoder is enabled and so upstream doesn't build it in this case.
+#
+microlzma = ($($lib: liblzma.microlzma_encoder) &&  \
+             ($($lib: liblzma.microlzma_decoder) || \
+              !$find($decoders, lzma1)))
+
+hdrs = h{tests tuktest}                    \
+       src/common/h{mythread               \
+                    sysdefs                \
+                    tuklib_common          \
+                    tuklib_config          \
+                    tuklib_integer}        \
+       src/liblzma/common/h{index}
+
+for t: c{test_* -test_microlzma}
+  ./: exe{$name($t)}: $t $hdrs $lib testscript
+
+./: exe{test_microlzma}: include = $microlzma
+exe{test_microlzma}: c{test_microlzma} $hdrs $lib testscript
+
+# The test input files.
+#
+./: files/file{*}
+
+# Build options.
+#
+# Similar to the library, define the features as upstream does for all its
+# targets. Also request the test results in the TAP format (see testscript
+# for details).
+#
+c.poptions =+ "-I$src_base/src/common" "-I$src_base/src/liblzma"
+
+c.poptions += -DHAVE_STDBOOL_H -DHAVE__BOOL -DHAVE_STDINT_H -DHAVE_INTTYPES_H
+
+if ($c.class != 'msvc')
+  c.poptions += -D_GNU_SOURCE              \
+                -D_NETBSD_SOURCE           \
+                -D_OPENBSD_SOURCE          \
+                -D__EXTENSIONS__           \
+                -D_POSIX_PTHREAD_SEMANTICS \
+                -D_DARWIN_C_SOURCE         \
+                -D_TANDEM_SOURCE           \
+                -D_ALL_SOURCE
+
+if! $empty($encoders)
+  c.poptions += -DHAVE_ENCODERS
+
+if! $empty($decoders)
+  c.poptions += -DHAVE_DECODERS
+
+for e: $encoders
+  c.poptions += "-DHAVE_ENCODER_$string.ucase($e)"
+
+for d: $decoders
+  c.poptions += "-DHAVE_DECODER_$string.ucase($d)"
+
+for k: $checks
+  c.poptions += "-DHAVE_CHECK_$string.ucase($k)"
+
+if $($lib: liblzma.lzip_decoder)
+  c.poptions += -DHAVE_LZIP_DECODER
+
+c.poptions += "-DMYTHREAD_$string.ucase($threads)" -DTUKTEST_TAP
+
+if ($threads == 'posix')
+  c.libs += -pthread

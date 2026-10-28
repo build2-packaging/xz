@@ -1,0 +1,9 @@
+# Each test program runs a number of test cases, reading its input files
+# relative to the srcdir environment variable. The results are reported in
+# the TAP format and a test case that is skipped (for example, because the
+# amount of physical memory cannot be determined) is not a failure. So we
+# extract the failed test cases and expect there to be none.
+#
+: test-cases
+:
+env "srcdir=$src_base" -- $* | sed -n -e 's/^((not ok|Bail out!).*)$/\1/p'
