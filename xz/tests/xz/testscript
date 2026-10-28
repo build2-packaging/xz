@@ -13,20 +13,20 @@ bin = $~/bin
 :
 : Test decompression of the good, bad, and unsupported test files.
 :
-env "srcdir=$src_base" -- sh $src_base/test_files.sh $bin >-
+env "srcdir=$src_base" -- sh $src_base/test_files.sh $bin 1>&2
 
 : suffix-handling
 :
 : Test the suffix handling (--suffix, --format=raw, etc).
 :
-sh $src_base/test_suffix.sh $bin >-
+sh $src_base/test_suffix.sh $bin 1>&2
 
 : scripts-diff-grep
 :
 : Test xzdiff and xzgrep. Note that the script adds the directory to PATH
 : relative to its working directory.
 :
-env "srcdir=$src_base" -- sh $src_base/test_scripts.sh ../bin >- \
+env "srcdir=$src_base" -- sh $src_base/test_scripts.sh ../bin 1>&2 \
   &xzgrep_test_1.xz &xzgrep_test_2.xz &xzgrep_test_output
 
 : compress-generated
@@ -41,18 +41,18 @@ env "srcdir=$src_base" -- sh $src_base/test_scripts.sh ../bin >- \
   : abc
   :
   ln -s $c ./ &create_compress_files;
-  sh $src_base/test_compress.sh compress_generated_abc $bin >- \
+  sh $src_base/test_compress.sh compress_generated_abc $bin 1>&2 \
     &compress_generated_abc
 
   : text
   :
   ln -s $c ./ &create_compress_files;
-  sh $src_base/test_compress.sh compress_generated_text $bin >- \
+  sh $src_base/test_compress.sh compress_generated_text $bin 1>&2 \
     &compress_generated_text
 
   : random
   :
   ln -s $c ./ &create_compress_files;
-  sh $src_base/test_compress.sh compress_generated_random $bin >- \
+  sh $src_base/test_compress.sh compress_generated_random $bin 1>&2 \
     &compress_generated_random
 }}

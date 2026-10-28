@@ -12,4 +12,4 @@ bin = $~/bin
 :
 : Test decompression of the good, bad, and unsupported test files.
 :
-env "srcdir=$src_base" -- sh $src_base/test_files.sh $bin $bin >-
+env "srcdir=$src_base" -- sh $src_base/test_files.sh $bin $bin 1>&2
