@@ -4,6 +4,10 @@
 
 using c
 
+# Upstream provides 32-bit x86 assembly implementations of the CRCs.
+#
+using c.as-cpp
+
 h{*}: extension = h
 c{*}: extension = c
 
