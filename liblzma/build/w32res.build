@@ -54,6 +54,19 @@ w32res{~'/.+/'}:
     for x: $p
       q += $regex.replace($x, '^-([ID])', '/\1')
 
+    # Unlike windres, which preprocesses with the compiler, the Microsoft
+    # resource compiler finds system headers (winresrc.h, etc) via the
+    # INCLUDE environment variable, which is only set in the Visual Studio
+    # command prompt. So we pass the compiler's system header directories
+    # explicitly, the same as the cc module does for the compiler. Except
+    # for Clang's own headers (lib/clang/<ver>/include/), which the resource
+    # compiler cannot parse.
+    #
+    h = $regex.filter_out_match($c.sys_hdr_dirs, \
+          '.*[/\\]lib[/\\]clang[/\\][^/\\]+[/\\]include[/\\]*')
+    for d: $h
+      q += "/I$d"
+
     $bin.rc.path /nologo $q /fo $o $s
   }
 }}
