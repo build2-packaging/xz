@@ -1,0 +1,7 @@
+: 1
+name: lzmainfo
+version: 5.8.4+2
+language: c
+project: xz
+summary: .lzma file header information command line utility
+license: 0BSD AND LGPL-2.1-or-later; getopt_long() replacement LGPLv2.1+.
