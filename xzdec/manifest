@@ -1,6 +1,6 @@
 : 1
 name: xzdec
-version: 5.8.4+2
+version: 5.8.4+3
 language: c
 project: xz
 summary: XZ and LZMA data decompression command line utilities
