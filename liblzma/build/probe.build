@@ -225,18 +225,16 @@ elif ($c.class == 'msvc')
   # While there are several version of this format (1.0, 1.1, and 1.2), they
   # all have Includes inside Data. And we ignore the rest (modules, PCH, etc).
   #
+  # Note that a probe may include no headers, in which case the list is empty
+  # and the result must be an empty file. Which is why we write the headers
+  # one per line instead of merging them, since merging an empty list yields
+  # null, which echo would print as such.
+  #
   set d [json_object] <$t
 
-  if ($build.version.major > 0 || $build.version.minor > 18)
-  {
-    echo $merge([strings] $d[Data][Includes], $\n) >$t
-  }
-  else
-  {
-    true >$t # Truncate.
-    for h: ($d[Data][Includes])
-      echo "$h" >>$t
-  }
+  true >$t # Truncate.
+  for h: ($d[Data][Includes])
+    echo "$h" >>$t
 }}
 
 # System header presence probe rule.
