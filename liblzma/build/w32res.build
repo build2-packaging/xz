@@ -1,9 +1,8 @@
 # Windows resource file rule.
 #
 # Upstream embeds the version information into its DLL and executables with
-# resource files. We compile them with the resource compiler that the bin.rc
-# module (loaded by the cc module when targeting Windows) has configured and
-# pass the results to the linker.
+# resource files. We compile them with the resource compiler configured by
+# the bin.rc module and pass the results to the linker.
 #
 # The resource file should be the first prerequisite of the w32res{}
 # target, followed by the files it includes. The preprocessor options (-I
@@ -13,11 +12,17 @@
 #
 # Note that the output is passed to the linker as an option (the cc link
 # rule doesn't recognize it as an input) and so we also make its extension
-# available as the w32res_extension variable. Note also that the bin.rc
-# module is only loaded when targeting Windows, which is the only case where
-# this rule is used.
+# available as the w32res_extension variable.
 #
 define w32res: file
+
+# The cc module only loads bin.rc when targeting MinGW and so we load it
+# ourselves for MSVC. We only do it when targeting Windows, which is the
+# only case where this rule is used, since elsewhere there is normally no
+# resource compiler to configure.
+#
+if ($c.target.class == 'windows')
+  using bin.rc
 
 w32res_extension = ($bin.rc.id == 'gnu' ? o : res)
 
