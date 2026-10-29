@@ -5,9 +5,15 @@
 using c
 
 # Windows resource file rule (see w32res.build for details). Note that we
-# source it unconditionally for it to be distributed.
+# source it regardless of the target for it to be distributed.
 #
-source $src_root/build/w32res.build
+# We skip it during the package skeleton load, which doesn't need it, since
+# in all the packages except liblzma it's a symlink and bpkg loads the
+# skeleton of a package fetched from a git repository before resolving
+# symlinks, which matters on Windows.
+#
+if ($build.mode != 'skeleton')
+  source $src_root/build/w32res.build
 
 h{*}: extension = h
 c{*}: extension = c

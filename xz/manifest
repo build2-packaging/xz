@@ -9,7 +9,6 @@ topics: data compression, LZMA, LZMA2, XZ
 description-file: README
 package-description-file: PACKAGE-README.md
 changes-file: NEWS
-build-file: w32res.build
 url: https://tukaani.org/xz/
 src-url: https://github.com/tukaani-project/xz
 email: xz@tukaani.org
