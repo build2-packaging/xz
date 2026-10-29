@@ -1,0 +1,8 @@
+: 1
+name: xz
+version: 5.8.4+3
+language: c
+project: xz
+summary: XZ and LZMA data compression command line utility
+license: 0BSD AND GPL-2.0-or-later AND LGPL-2.1-or-later; Scripts GPLv2+,\
+ getopt_long() replacement LGPLv2.1+.

@@ -1,0 +1,7 @@
+: 1
+name: xzdec
+version: 5.8.4+3
+language: c
+project: xz
+summary: XZ and LZMA data decompression command line utilities
+license: 0BSD AND LGPL-2.1-or-later; getopt_long() replacement LGPLv2.1+.

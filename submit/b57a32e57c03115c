@@ -1,0 +1,7 @@
+: 1
+name: liblzma
+version: 5.8.4+3
+language: c
+project: xz
+summary: XZ and LZMA data compression C library
+license: 0BSD; BSD Zero Clause License.
