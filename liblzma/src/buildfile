@@ -239,6 +239,12 @@ objs{*}: c.poptions += -DHAVE_VISIBILITY=($visibility ? 1 : 0)
 if ($c.target.class == 'windows')
   objs{*}: c.poptions += -DDLL_EXPORT
 
+# Disable warnings that pop up with /W3, all of which are about implicit
+# size_t narrowing.
+#
+if ($c.id == 'msvc')
+  c.coptions += /wd4267
+
 if $visibility
   objs{*}: c.coptions += -fvisibility=hidden
 

@@ -80,3 +80,13 @@ c.poptions += "-DMYTHREAD_$string.ucase($threads)" -DTUKTEST_TAP
 
 if ($threads == 'posix')
   c.libs += -pthread
+
+# Disable warnings that pop up in upstream's tests. Every compiler targeting
+# MSVC warns about the CRT function deprecations (fopen(), getenv(), etc)
+# and MSVC also warns about an implicit integer narrowing with /W3.
+#
+if ($c.target.system == 'win32-msvc')
+  c.poptions += -D_CRT_SECURE_NO_WARNINGS
+
+if ($c.id == 'msvc')
+  c.coptions += /wd4244

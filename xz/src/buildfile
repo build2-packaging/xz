@@ -312,6 +312,16 @@ c.poptions += -DASSUME_RAM=128
 if ($threads == 'posix')
   c.libs += -pthread
 
+# Disable warnings that pop up in upstream code. Every compiler targeting
+# MSVC warns about the CRT function deprecations (strerror(), _open(), etc)
+# and MSVC also warns about implicit integer narrowing with /W3.
+#
+if ($c.target.system == 'win32-msvc')
+  c.poptions += -D_CRT_SECURE_NO_WARNINGS
+
+if ($c.id == 'msvc')
+  c.coptions += /wd4244 /wd4267
+
 # Windows resource file (see build/w32res.build for details).
 #
 # Note that for executables upstream's resource file also embeds an

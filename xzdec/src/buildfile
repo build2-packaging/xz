@@ -133,6 +133,12 @@ c.poptions += -DHAVE_CONFIG_H
 if $getopt
   c.poptions += -D__GETOPT_PREFIX=rpl_
 
+# Disable the CRT function deprecation warnings (strerror(), etc) that
+# every compiler targeting MSVC issues for upstream code.
+#
+if ($c.target.system == 'win32-msvc')
+  c.poptions += -D_CRT_SECURE_NO_WARNINGS
+
 # Windows resource files (see build/w32res.build for details).
 #
 # Note that for executables upstream's resource files also embed an
